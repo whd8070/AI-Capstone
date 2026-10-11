@@ -1,213 +1,344 @@
-# 온톨로지 v1 — 포트폴리오 설명 챗봇 도메인
-# 근거: 설문조사 10건(2026-09-16 ~ 09-30) + 팀 프로젝트 정의
+# 온톨로지 v1.1 — 포트폴리오 설명·검증 챗봇 도메인
+# 구조: 근거 색인 → 사용자 도메인(개념·속성·관계) → 시스템 도메인(개념·속성·관계)
+#       → 인과 가설 → 페인포인트 → 사용자 구분 → 시스템 대응 → 기각 가설 → 한계
 
 meta:
-  title: "온톨로지 v1 — 포트폴리오 설명 챗봇 도메인"
-  version: v1
-  date: 2026-09-30
-  basis: "설문조사 10건(2026-09-16 ~ 09-30) + 팀 프로젝트 정의"
+  title: "온톨로지 v1.1 — 포트폴리오 설명·검증 챗봇 도메인"
+  version: v1.1
+  date: 2026-10-11
+  basis: "설문조사 10건(2026-09-16 ~ 09-30, 응답 원본: docs/research/설문조사_응답원본.md) + 팀 프로젝트 정의"
   parent_docs: []
-  child_docs: ["problem-definition.md", "spec-v1.md"]
+  child_docs: ["PROBLEM.md", "SPEC.md"]
+  changelog:
+    - "v1.1: SUR 수치를 설문 원본과 재대조해 수정 (SUR-01·02·03·04·07)"
+    - "v1.1: 행동을 개념이 아닌 '투자자–제안 관계'로 재정의하고, 실행 정도·소요시간 등을 관계의 속성으로 이동"
+    - "v1.1: 신뢰(사용자의 믿음, 관계의 속성)와 검증(시스템의 판정)을 분리 — Verification Agent의 대상을 신뢰에서 근거성·사실성으로 수정"
+    - "v1.1: 시스템 도메인 관계(구성·인용·판정·설명) 추가, 포트폴리오에 weights 속성 추가"
+    - "v1.1: 인과 연결을 관계와 분리해 causal_hypotheses로 이동, 응답자가 직접 이유로 말한 연결만 confirmed"
+    - "v1.1: 문제를 겪지 않는 집단(SUR-10)과 사용자 구분(segments) 추가, ASM-06·07 추가"
 
-# 0. 근거 태그 체계 — 저장소의 모든 문서는 주장마다 아래 태그로 근거 등급을 표기한다
+# ─────────────────────────────────────────────
+# 0. 근거 태그 — 모든 항목은 아래 셋 중 하나로 근거 등급을 표기한다
+#    관찰된 행동 = SUR / 원인에 대한 추정 = ASM / 시스템 구조 = PRJ
+# ─────────────────────────────────────────────
 evidence_tags:
-  SUR: { meaning: "설문조사에서 직접 확인된 사실", status: "검증됨 (n=10 한계 내)" }
-  ASM: { meaning: "팀이 설정한 가정", status: "미검증 — 인터뷰 검증 대상" }
-  PRJ: { meaning: "프로젝트 정의(팀 합의)에서 온 설계 결정", status: "합의됨" }
+  SUR: { meaning: "설문에서 직접 관찰된 행동·응답", status: "확인됨 (n=10 한계 내)" }
+  ASM: { meaning: "팀이 세운 가정 (원인 추정, 해결 효과 추정)", status: "미검증 — 인터뷰·테스트 대상" }
+  PRJ: { meaning: "팀 합의 설계 결정 (데이터 구조, 시스템 구성)", status: "합의됨 — 설문에서 도출된 것이 아님" }
 
-# 증거 색인 (SUR)
 evidence:
   - id: SUR-01
-    content: "자산배분 조언 수신자 4명 중 3명이 신뢰·확신 부재로 전부 실행하지 않음"
-    quotes: ["믿음직스럽지 않아서", "지인 의견에 모두 동의할 수 없어서", "확신이 들지 않았기 때문"]
-    sources: [R1, R3, R10]
+    content: "조언 수신자 5명 중 4명이 제안을 전부 실행하지는 않음 (일부 실행 2명: R1·R3 / 미실행 2명: R6·R10). 이 중 3명은 신뢰·확신 부재를 이유로 들었고(R1·R3·R10), 1명은 귀찮음(R6)"
+    quotes: ["믿음직스럽지 않아서", "지인 의견에 모두 동의할 수 없어서", "확신이 들지않았기때문."]
+    sources: [R1, R3, R6, R10]
+    questions: [Q1, Q2, Q3]
   - id: SUR-02
-    content: "제안 검증에 드는 확신 획득 비용이 높음 — 2시간(R1), 며칠(R3), 결국 확신 못 얻음(R6)"
-    sources: [R1, R3, R6, R9]
+    content: "교차확인을 시도한 대상층은 비용이 크거나 확신에 실패함 — 백테스트 2시간(R1), 뉴스·시황 며칠(R3), 확신 못 얻음(R6)"
+    sources: [R1, R3, R6]
+    counter_evidence: "R2는 지인·검색으로 10분 내 확신 (SUR-10)"
+    excluded: "R9 — Q1에서 조언 수신 없음, Q5 응답은 분기 오염으로 제외"
+    questions: [Q4, Q5]
   - id: SUR-03
-    content: "매수·매도 결정 직전 30분 행동이 \"그냥 샀다\" 6/10"
-    sources: [R1, R2, R5, R7, R8, R6]
+    content: "결정 직전 30분 행동에 '그냥 샀다' 5/10 (R1·R2·R5·R7·R8)"
+    sources: [R1, R2, R5, R7, R8]
+    caveat: "Q9 질문문에 '그냥 샀다'가 예시로 포함되어 응답 유도 가능. 이 중 4명(R1·R2·R5·R7)은 Q10에서 출처를 확인했다고 답함 → '무확인 실행'의 증거로 사용하지 않음 (ASM-01 참조)"
+    questions: [Q9, Q10]
   - id: SUR-04
-    content: "투자 정보 출처에서 유튜브(4)·커뮤니티(2)가 공식 출처(리포트 1, 공시 1)를 압도"
-    sources: ["Q10 집계"]
+    content: "결정 전 확인한 출처 — 유튜브 4(R1·R2·R5·R10), 뉴스 기사 2(R2·R5), 차트 2(R7·R9), 커뮤니티 1(R10), 리포트 1(R7), 공시 0, 아무것도 안 봄 2(R6·R8)"
+    questions: [Q10]
   - id: SUR-05
-    content: "낡은/부정확 정보 기반 투자 판단 실손실 사례"
-    quotes: ["클래리티 법안 통과 여부를 보고 이더리움 숏"]
+    content: "낡은·부정확 정보를 근거로 한 투자 판단 사례"
+    quotes: ["클래리티 법안 통과 여부를 보고 부정적인 시각에서 이더리움 숏을 쳤다."]
     sources: [R1]
+    caveat: "R1은 대상에서 제외한 전문가 유형 — 대상층의 손실 증거가 아니라 참고 신호로만 사용"
+    questions: [Q13]
   - id: SUR-06
-    content: "생성형 AI를 이미 금융 정보 채널로 사용 4/10 — 자산배분 논의, 시황 확인 루틴, 제도 자격 확인, 정보 탐색 경로"
+    content: "생성형 AI를 금융 정보 채널로 사용 4/10 — 자산배분 논의(R10, Q1), 시황 확인 루틴(R7, Q14), 제도 자격 확인(R8, Q21), 제도 탐색 경로(R6, Q22). 투자 판단 용도는 2명(R7·R10)"
     sources: [R6, R7, R8, R10]
   - id: SUR-07
-    content: "금융앱 추천 포트폴리오를 그대로 실행한 경험 0/10"
+    content: "금융앱 추천 포트폴리오를 그대로 실행한 경험 0/10. 이유는 '본 적 없음·해당 없음' 다수, 시드 부족(R6), 직접 투자(R7)이며 불신은 R2 1명"
     quotes: ["거짓같아서"]
-    sources: ["Q8 집계", R2]
+    sources: [R2]
+    caveat: "불신의 증거로 쓰지 않음 (rejected_hypotheses 참조)"
+    questions: [Q8]
   - id: SUR-08
-    content: "자산관리·투자 정보에 대한 유료 지불 경험 0/10 (전 도메인)"
-    sources: ["Q7 집계", "Q16 집계"]
+    content: "자산관리·투자 정보에 대한 유료 지불 경험 0/10"
+    questions: [Q7, Q16]
   - id: SUR-09
-    content: "보유 자산 관련 뉴스·시황 확인 루틴 없음 6/10"
-    sources: ["Q14 집계"]
+    content: "보유 자산 뉴스·시황 확인 루틴 없음 6/10 (R2·R3·R4·R6·R8·R9)"
+    questions: [Q14]
+  - id: SUR-10
+    content: "검증 비용이 낮은 응답자 존재 — R2는 10분 내 확신 후 제안대로 실행, R7은 의심 정보를 공시로 5분 만에 확인"
+    sources: [R2, R7]
+    questions: [Q2, Q5, Q11, Q12]
 
-# 가정 색인 (ASM) — 인터뷰 검증 백로그
 assumptions:
   - id: ASM-01
-    hypothesis: "\"그냥 샀다\"(SUR-03)는 확인 필요성을 못 느껴서가 아니라, 확인 비용이 높아 학습된 포기다"
-    validation: "인터뷰: 해당 응답자 유형에게 \"왜 확인하지 않았나\" 심층 질문"
+    hypothesis: "교차확인에 실패한 경험이 쌓이면 이후 확인 없이 실행하게 된다 (학습된 검증 포기)"
+    note: "SUR-03의 '그냥 샀다'는 유도 가능성이 있어 이 가정의 근거로 충분하지 않음"
+    validation: "인터뷰: 최근 매수 1건을 따라가며 확인 여부와 그 이유를 질문"
   - id: ASM-02
     hypothesis: "추천 비중에 출처가 연결된 설명이 붙으면 실행 확신이 상승한다"
-    validation: "프로토타입 A/B 또는 인터뷰 반응 테스트"
+    validation: "프로토타입 반응 테스트 — 설명 노출 후 실행 결정 도달 여부"
   - id: ASM-03
-    hypothesis: "생성형 AI 답변(SUR-06)에 대해 사용자는 사실성 검증 수단을 원한다"
-    validation: "인터뷰: GPT 사용자 4명 유형 집중 섭외"
+    hypothesis: "생성형 AI를 금융 정보에 쓰는 사용자는 답변의 사실성을 확인할 수단을 원한다"
+    validation: "인터뷰: SUR-06 유형 사용자 집중 섭외"
   - id: ASM-04
-    hypothesis: "뉴스·시황과 비중을 연결한 설명이 \"왜 이 비중인가\"에 대한 이해를 높인다"
+    hypothesis: "뉴스·시황과 비중을 연결한 설명이 '왜 이 비중인가'에 대한 이해를 높인다"
     validation: "사용성 테스트"
   - id: ASM-05
     hypothesis: "서비스는 무료 사용을 전제한다 (SUR-08에 근거한 스코프 결정)"
-    validation: null   # 결정사항 — 검증 대상 아님
+    validation: null   # 결정사항
+  - id: ASM-06
+    hypothesis: "사용자가 제안을 불신하는 주된 이유는 제안의 근거를 확인할 수 없기 때문이다"
+    note: "응답자는 불신·불확신을 말했지만(SUR-01) 그 원인이 근거 부재라고 직접 말하지는 않음"
+    validation: "인터뷰: 불신했던 제안 1건에 대해 '무엇이 있었으면 실행했나'가 아니라 '그때 무엇을 확인하려 했나'를 질문"
+  - id: ASM-07
+    hypothesis: "최적화기가 산출한 비중은 대상 사용자에게 자산배분 제안의 한 형태로 전달될 수 있다"
+    note: "설문 응답자 중 최적화 비중을 받아 본 사람은 직접 구현한 R1뿐"
+    validation: "프로토타입 테스트 — 대상 사용자가 산출 비중을 제안으로 받아들이는지 관찰"
 
-# 1. 개념 (Entities)
-entities:
-  actors:
-    - id: low_engagement_investor
-      name: "저관여 개인투자자"
-      definition: "투자는 하지만 정보 탐색·검증 루틴이 없는 2030 투자자. 설문 주 표본"
-      evidence: [SUR-03, SUR-09]
+# ─────────────────────────────────────────────
+# 1. 사용자 도메인 — 관찰된 행동 (근거: SUR)
+# ─────────────────────────────────────────────
+user_domain:
+  concepts:
+    - id: investor
+      name: "투자자"
+      definition: "투자는 하지만 정보 확인 루틴이 약한 2030 개인투자자"
+      attributes:
+        has_check_routine: { type: bool, evidence: [SUR-09] }
+        info_sources: { type: "list[유튜브|기사|커뮤니티|리포트|공시|차트|생성형AI]", evidence: [SUR-04, SUR-06] }
     - id: advice_channel
       name: "조언 채널"
-      definition: "자산배분 제안의 공급자: 유튜브, 지인, 금융앱, 생성형 AI"
-      evidence: [SUR-04, SUR-06, SUR-07]
+      definition: "자산배분 제안을 주는 곳"
+      attributes:
+        kind: { type: "유튜브|지인|금융앱|생성형AI|부모님", evidence: [SUR-01, SUR-06] }
+    - id: advice_proposal
+      name: "자산배분 제안"
+      definition: "채널이 투자자에게 주는 비중·종목 제안"
+      attributes:
+        has_stated_basis: { type: bool, note: "제안에 근거가 함께 제시되는지", evidence: [ASM-06] }
+
+  relations:   # 값은 개념이 아니라 관계(행동)에 붙는다
+    - id: R-U1
+      subject: advice_channel
+      relation: "제공한다"
+      object: advice_proposal
+      evidence: [SUR-01]
+    - id: R-U2
+      subject: investor
+      relation: "받는다"
+      object: advice_proposal
+      attributes:
+        received_at: { type: date }
+      evidence: [SUR-01]
+    - id: R-U3
+      subject: investor
+      relation: "신뢰한다"
+      object: advice_proposal
+      attributes:
+        trusted: { type: bool, note: "사용자의 믿음 — 내용이 사실인지와는 별개" }
+      evidence: [SUR-01]
+    - id: R-U4
+      subject: investor
+      relation: "실행한다"
+      object: advice_proposal
+      attributes:
+        degree: { type: "전부|일부|안함" }
+        reason: { type: text, example: "믿음직스럽지 않아서" }
+      evidence: [SUR-01]
+    - id: R-U5
+      subject: investor
+      relation: "교차확인한다"
+      object: advice_proposal
+      attributes:
+        method: { type: "백테스트|뉴스·시황|지인|검색|공시", evidence: [SUR-02] }
+        duration: { type: text, example: "2시간, 며칠" }
+        confidence_reached: { type: bool }
+      evidence: [SUR-02, SUR-10]
+    - id: R-U6
+      subject: investor
+      relation: "참고한다"
+      object: market_info_item
+      attributes:
+        recency_checked: { type: bool }
+      evidence: [SUR-04, SUR-05]
+
+  example_instance:   # R3 응답을 위 구조로 기록한 예
+    respondent: R3
+    facts:
+      - { relation: R-U2, object: "지인의 제안" }
+      - { relation: R-U4, degree: "일부", reason: "지인 의견에 모두 동의할 수 없어서" }
+      - { relation: R-U5, method: "뉴스·시황", duration: "며칠" }
+
+# ─────────────────────────────────────────────
+# 2. 시스템 도메인 — 데이터 구조 (근거: PRJ, 설문에서 도출된 것이 아님)
+# ─────────────────────────────────────────────
+system_domain:
+  concepts:
     - id: portfolio_optimizer
       name: "포트폴리오 최적화기"
-      definition: "기존 알고리즘. 수치 입력(수익률·공분산 등)으로 투자비중을 산출하는 외부 모듈"
-      evidence: [PRJ]
-    - id: system_agents
-      name: "시스템 에이전트"
-      definition: "Research / Explanation / Verification 3역 (spec-v1.md, AGENTS.md 참조)"
-      evidence: [PRJ]
-
-  information_objects:
+      definition: "기존 알고리즘. 수익률·공분산 등 수치 입력으로 비중을 산출하는 외부 모듈"
     - id: recommended_portfolio
       name: "추천 포트폴리오"
-      definition: "최적화기가 산출한 자산별 투자비중 벡터"
-      attributes: [t_opt]   # 산출 기준시점
-      evidence: [PRJ]
+      attributes:
+        weights: { type: "map[자산 → 비중]" }
+        t_opt: { type: datetime, note: "산출 기준시점" }
+        data_period: { type: "기간", note: "산출에 사용된 입력 데이터 기간" }
     - id: market_info_item
-      name: "시장 정보 항목"
-      definition: "크롤링으로 수집된 뉴스·시황·공시 단위 문서"
-      attributes: [source_url, t_pub, t_crawl, source_grade]
-      evidence: [PRJ]
+      name: "시장 정보"
+      definition: "수집된 뉴스·시황·공시 단위 문서"
+      attributes:
+        source_url: { type: url }
+        t_pub: { type: datetime, note: "발행시각" }
+        t_crawl: { type: datetime, note: "수집시각" }
+        source_grade: { type: "공시|언론|커뮤니티" }
+        pool: { type: "산출근거|최신참고", rule: "t_pub ≤ t_opt → 산출근거, t_pub > t_opt → 최신참고" }
     - id: explanation
       name: "설명"
-      definition: "비중과 시장 정보를 연결해 생성된 자연어 응답"
-      attributes: [claims, source_ids]
-      evidence: [PRJ]
+      definition: "비중과 시장 정보를 연결한 챗봇 응답"
     - id: claim
-      name: "주장 (claim)"
-      definition: "설명 내 검증 가능한 최소 사실 단위"
-      attributes: [has_source, has_number]
-      evidence: [PRJ]
+      name: "주장"
+      definition: "설명 안에서 검증 가능한 최소 사실 단위"
+      attributes:
+        text: { type: text }
+        cited_numbers: { type: "list[number]" }
+        pool_label: { type: "산출근거|최신참고" }
     - id: verdict
       name: "검증 판정"
-      definition: "검증 에이전트가 주장 단위로 내리는 판정"
-      attributes: { label: [pass, reject, warn] }   # 통과 / 반려 / 경고
-      evidence: [PRJ]
+      attributes:
+        label: { type: "pass|reject|warn" }
+        layer: { type: "출처존재|정합성|시점" }
+        reason: { type: text }
 
-  actions:
-    - id: receive_advice
-      name: "조언 수신"
-      definition: "채널로부터 자산배분 제안을 받음 (4/10)"
-      evidence: ["Q1 집계"]
-    - id: non_execution
-      name: "미실행·부분실행"
-      definition: "제안을 받고도 실행하지 않거나 일부만 실행"
-      evidence: [SUR-01]
-    - id: unverified_execution
-      name: "무확인 실행 (\"그냥 삼\")"
-      definition: "검증 없이 매수·매도"
-      evidence: [SUR-03]
-    - id: cross_check
-      name: "교차확인"
-      definition: "다른 출처·지인·백테스트로 제안을 검증하려는 시도"
-      evidence: [SUR-02]
-    - id: confidence_failure
-      name: "확신 획득 실패"
-      definition: "교차확인에도 결론에 도달하지 못함"
-      evidence: ["SUR-02 (R6)"]
+  relations:
+    - { id: R-S1, subject: portfolio_optimizer, relation: "산출한다", object: recommended_portfolio }
+    - { id: R-S2, subject: explanation, relation: "구성된다", object: claim, cardinality: "1..n" }
+    - { id: R-S3, subject: claim, relation: "설명한다", object: recommended_portfolio }
+    - { id: R-S4, subject: claim, relation: "인용한다", object: market_info_item, cardinality: "1..n", note: "출처 없는 주장은 생성 금지 (AC-03a)" }
+    - { id: R-S5, subject: verdict, relation: "판정한다", object: claim, cardinality: "주장당 1" }
 
-  judgement_criteria:
-    - id: trust
-      name: "신뢰 (trust)"
-      definition: "제안·정보의 진실성에 대한 사용자의 믿음. 부재 시 미실행 유발"
-      evidence: [SUR-01, SUR-07]
-    - id: confidence
-      name: "확신 (confidence)"
-      definition: "실행 결정을 내리기에 충분한 심리적 상태. 획득 비용이 높음"
-      evidence: [SUR-02]
-    - id: recency
-      name: "최신성 (recency)"
-      definition: "정보가 현재 시점에 유효한지. 위반 시 실손실"
-      evidence: [SUR-05]
-    - id: groundedness
-      name: "근거성 (groundedness)"
-      definition: "주장이 확인 가능한 출처에 연결되는지. 현재 채널 대부분 결여"
-      evidence: [SUR-04, ASM-03]
+  bridge:   # 사용자 도메인과 시스템 도메인의 연결
+    - { system: recommended_portfolio, user: advice_proposal, relation: "제안의 한 형태로 전달된다", evidence: [ASM-07] }
 
-  pain_points:
-    - id: PAIN-01
-      description: "제안의 근거를 확인할 수 없어 신뢰·확신이 형성되지 않고, 실행이 보류됨"
-      evidence: [SUR-01, SUR-07]
-    - id: PAIN-02
-      description: "스스로 검증하려면 비용이 크고(수 시간~며칠), 실패하기도 함"
-      evidence: [SUR-02]
-    - id: PAIN-03
-      description: "검증 비용 회피의 결과로 무확인 실행이 지배적 행동이 됨"
-      evidence: [SUR-03, ASM-01]
-    - id: PAIN-04
-      description: "낡은 정보를 최신으로 오인해 판단하면 실손실이 발생"
-      evidence: [SUR-05]
-    - id: PAIN-05
-      description: "이미 사용 중인 생성형 AI 채널에는 사실성 검증 계층이 없음"
-      evidence: [SUR-06, ASM-03]
+# ─────────────────────────────────────────────
+# 3. 신뢰와 검증의 경계
+# ─────────────────────────────────────────────
+trust_vs_verification:
+  trust: "투자자–제안 관계의 속성 (R-U3.trusted). 사용자의 믿음이며 사실 여부를 보장하지 않는다"
+  verification: "주장–출처 관계에 대한 시스템 판정 (R-S5). 출처가 존재하는가, 내용과 숫자가 맞는가, 시점이 맞는가"
+  link: "검증된 설명이 신뢰·확신을 높인다는 것은 기대 효과일 뿐이며 미검증 (ASM-02)"
 
-# 2. 관계 (Relations)
-# status: confirmed = 설문에서 확인된 연결 / assumed = 팀 가정으로만 연결된 구간
-# 유일한 assumed 구간(확신 획득 실패 → 무확인 실행)이 인터뷰 최우선 검증 대상이다.
-relations:
-  - { from: advice_channel, relation: "제공", to: advice_proposal, status: confirmed }
-  - { from: advice_proposal, relation: "결여", to: groundedness, status: confirmed, evidence: [SUR-04, SUR-07] }
-  - { from: groundedness, relation: "미형성", to: trust_confidence, status: confirmed, evidence: [SUR-01] }
-  - { from: trust_confidence, relation: "유발", to: non_execution, status: confirmed, evidence: [PAIN-01] }
-  - { from: trust_confidence, relation: "회피경로", to: cross_check, status: confirmed, evidence: [SUR-02] }
-  - { from: cross_check, relation: "고비용·실패", to: confidence_failure, status: confirmed, evidence: [PAIN-02] }
-  - { from: confidence_failure, relation: "학습된 포기", to: unverified_execution, status: assumed, evidence: [ASM-01, SUR-03, PAIN-03] }
-  - { from: market_info_item, relation: "최신성 위반", to: monetary_loss, status: confirmed, evidence: [SUR-05, PAIN-04] }
-  - { from: genai_usage, relation: "검증계층 부재", to: PAIN-05, status: confirmed, evidence: [SUR-06] }
+# ─────────────────────────────────────────────
+# 4. 인과 가설 — 속성 값끼리의 영향. 응답자가 직접 이유로 말한 연결만 confirmed
+# ─────────────────────────────────────────────
+causal_hypotheses:
+  - id: H-1
+    cause: "R-U3.trusted = false"
+    effect: "R-U4.degree ∈ {일부, 안함}"
+    status: confirmed
+    evidence: [SUR-01]
+    note: "R1·R3·R10이 미실행 이유로 불신·불확신을 직접 언급"
+  - id: H-2
+    cause: "advice_proposal.has_stated_basis = false"
+    effect: "R-U3.trusted = false"
+    status: assumed
+    evidence: [ASM-06]
+  - id: H-3
+    cause: "R-U5.confidence_reached = false (반복)"
+    effect: "이후 교차확인 없이 실행"
+    status: assumed
+    evidence: [ASM-01]
+    note: "인터뷰 최우선 검증 대상"
+  - id: H-4
+    cause: "R-U6.recency_checked = false"
+    effect: "금전 손실"
+    status: confirmed
+    evidence: [SUR-05]
+    scope: "대상 제외 유형(R1)에서만 관찰 — 대상층에서는 미확인"
+  - id: H-5
+    cause: "출처가 연결·검증된 설명 제공"
+    effect: "R-U3.trusted, R-U5.confidence_reached 상승"
+    status: assumed
+    evidence: [ASM-02]
 
-# 관계에만 등장하는 보조 노드
-auxiliary_nodes:
-  advice_proposal: "자산배분 제안"
-  trust_confidence: "신뢰·확신 (trust + confidence 결합 노드)"
-  monetary_loss: "실손실"
-  genai_usage: "생성형 AI 사용"
+# ─────────────────────────────────────────────
+# 5. 페인포인트
+# ─────────────────────────────────────────────
+pain_points:
+  - id: PAIN-01
+    description: "제안을 믿지 못해 실행을 보류하며, 그 원인이 근거를 확인할 수 없기 때문인지는 검증 중"
+    evidence: [SUR-01, ASM-06]
+  - id: PAIN-02
+    description: "스스로 확인하려면 수 시간~며칠이 들고, 확신에 실패하기도 함"
+    evidence: [SUR-02]
+  - id: PAIN-03
+    description: "확인 실패가 반복되면 확인 없이 실행하게 될 수 있음"
+    evidence: [ASM-01]
+  - id: PAIN-04
+    description: "낡은 정보를 최신으로 오인하면 손실로 이어질 수 있음"
+    evidence: [SUR-05]
+  - id: PAIN-05
+    description: "이미 쓰고 있는 생성형 AI 답변에는 사실성 확인 수단이 없음"
+    evidence: [SUR-06, ASM-03]
 
-# 3. 시스템 대응 관계 (온톨로지 → 솔루션 컴포넌트)
+# ─────────────────────────────────────────────
+# 6. 사용자 구분 — 문제를 겪는 집단과 겪지 않는 집단
+# ─────────────────────────────────────────────
+segments:
+  - id: target
+    name: "확인 수단이 없는 저관여층"
+    respondents: [R3, R6, R10]
+    criteria: "제안을 받고 실행을 보류했거나, 확인에 큰 비용을 쓰고도 확신에 실패"
+    evidence: [SUR-01, SUR-02, SUR-09]
+  - id: low_cost_verifier
+    name: "검증 비용이 낮은 사람 — 대상 아님"
+    respondents: [R2, R7]
+    criteria: "10분 이내 확인으로 확신 획득"
+    evidence: [SUR-10]
+  - id: expert
+    name: "스스로 검증하는 전문가 — 대상 제외"
+    respondents: [R1]
+    criteria: "백테스트·자체 최적화 모델 등 독자적 검증 수단 보유 (Q4, Q15)"
+    note: "R1의 손실 사례(SUR-05)는 참고 신호로만 사용"
+
+# ─────────────────────────────────────────────
+# 7. 시스템 대응 — 검증은 신뢰가 아니라 근거성·사실성을 다룬다
+# ─────────────────────────────────────────────
 system_mapping:
-  - target: "최신성 (PAIN-04)"
-    component: "Research Agent — 실시간 크롤링 + 시점 메타데이터"
+  - target: "최신성 — PAIN-04"
+    component: "Research Agent — 실시간 수집 + 시점 메타데이터(t_pub, t_crawl) + 풀 분류"
     spec_ref: FR-02
-  - target: "근거성 (PAIN-01)"
-    component: "Explanation Agent — 비중↔시장정보 연결 설명, 전 주장 출처 첨부"
+  - target: "근거 연결 — PAIN-01"
+    component: "Explanation Agent — 모든 주장에 출처 연결 (R-S4)"
     spec_ref: FR-03
-  - target: "신뢰 (PAIN-05, SUR-05)"
-    component: "Verification Agent — 주장-출처 대조, 무근거 주장 차단"
+    expected_effect: "신뢰 상승 (H-5, ASM-02 — 미검증)"
+  - target: "근거성·사실성 — PAIN-05"
+    component: "Verification Agent — 출처 존재·정합성·시점 3계층 판정 (R-S5), 무근거 주장 차단"
     spec_ref: FR-04
-  - target: "확신 비용 (PAIN-02)"
-    component: "시스템 전체 — 수 시간짜리 교차확인을 대화 1회로 압축"
+    expected_effect: "신뢰 상승 (H-5, ASM-02 — 미검증)"
+  - target: "확인 비용 — PAIN-02"
+    component: "시스템 전체 — 수 시간~며칠의 교차확인(R-U5.duration)을 대화 한 번으로"
     spec_ref: NFR-01
 
-# 4. v1의 한계 (명시)
+# ─────────────────────────────────────────────
+# 8. 기각·축소한 가설
+# ─────────────────────────────────────────────
+rejected_hypotheses:
+  - hypothesis: "금융정책·공공지원 탐색에서 헛걸음·중도포기가 잦다"
+    result: "헛걸음 0/10 (Q19), 중도포기 0/10 (Q24) — 스코프 제외"
+  - hypothesis: "사용자는 자산관리 정보에 돈을 낼 의사가 있다"
+    result: "지불 경험 0/10 (SUR-08) — 수익모델 제외, 무료 전제 (ASM-05)"
+  - hypothesis: "사용자는 금융앱 추천을 불신해서 따르지 않는다"
+    result: "축소 — 실행 0/10이지만 이유 대부분이 '본 적 없음'·'시드 부족', 불신은 1명 (SUR-07)"
+
+# ─────────────────────────────────────────────
+# 9. 한계
+# ─────────────────────────────────────────────
 limitations:
-  - "표본 n=10, 저관여층 편중, 전문가급 이상치 1명(R1) 포함 — 빈도 수치는 방향성 지표로만 사용한다."
-  - "분기 문항 로직 오염(비대상자 응답)이 있어 Q2·Q5 계열 집계는 보수적으로 해석했다."
-  - "페인포인트의 강도(지불의사)는 확인되지 않았다(SUR-08). 본 프로젝트는 이를 무료 서비스 전제(ASM-05)로 흡수한다."
+  - "표본 n=10, 단답형 설문 — 심층 인터뷰 미실시. 빈도 수치는 방향성 지표로만 사용한다."
+  - "분기 문항 오염: 비대상자가 분기 문항에 응답한 사례(R9의 Q5)를 근거에서 제외했다."
+  - "Q9 질문문 예시('그냥 샀다')가 응답을 유도했을 가능성이 있다."
+  - "대상층의 실제 손실 사례는 아직 없다 (SUR-05는 대상 제외 유형)."
+  - "지불의사는 확인되지 않았으며(SUR-08), 무료 서비스 전제(ASM-05)로 흡수한다."
