@@ -1,344 +1,626 @@
-# 온톨로지 v1.1 — 포트폴리오 설명·검증 챗봇 도메인
-# 구조: 근거 색인 → 사용자 도메인(개념·속성·관계) → 시스템 도메인(개념·속성·관계)
-#       → 인과 가설 → 페인포인트 → 사용자 구분 → 시스템 대응 → 기각 가설 → 한계
+# 개미구조대 온톨로지 v2.0
+# 설문에서 확인한 사실: SUR / 그 밖의 모든 가설·설계·규칙·계획: LOG
+# 파일 용도: 서비스 개념·속성·관계·근거·수용 기준의 단일 정의서
 
 meta:
-  title: "온톨로지 v1.1 — 포트폴리오 설명·검증 챗봇 도메인"
-  version: v1.1
-  date: 2026-10-11
-  basis: "설문조사 10건(2026-09-16 ~ 09-30, 응답 원본: docs/research/설문조사_응답원본.md) + 팀 프로젝트 정의"
-  parent_docs: []
-  child_docs: ["PROBLEM.md", "SPEC.md"]
-  changelog:
-    - "v1.1: SUR 수치를 설문 원본과 재대조해 수정 (SUR-01·02·03·04·07)"
-    - "v1.1: 행동을 개념이 아닌 '투자자–제안 관계'로 재정의하고, 실행 정도·소요시간 등을 관계의 속성으로 이동"
-    - "v1.1: 신뢰(사용자의 믿음, 관계의 속성)와 검증(시스템의 판정)을 분리 — Verification Agent의 대상을 신뢰에서 근거성·사실성으로 수정"
-    - "v1.1: 시스템 도메인 관계(구성·인용·판정·설명) 추가, 포트폴리오에 weights 속성 추가"
-    - "v1.1: 인과 연결을 관계와 분리해 causal_hypotheses로 이동, 응답자가 직접 이유로 말한 연결만 confirmed"
-    - "v1.1: 문제를 겪지 않는 집단(SUR-10)과 사용자 구분(segments) 추가, ASM-06·07 추가"
+  title: "개미구조대 온톨로지 — Diffusion·증권사 리포트·위험관리·설명 검증"
+  version: "v2.0-draft"
+  date: "2026-10-12"
+  replaces: "docs/ontology.yaml v1.1 (2026-10-11)"
+  source_documents:
+    - "https://github.com/whd8070/AI-Capstone/blob/main/docs/ontology.yaml"
+    - "https://github.com/whd8070/AI-Capstone/blob/main/docs/research/설문조사_응답원본.md"
+  intended_documents: ["PROBLEM.md", "SPEC.md", "중간발표 자료"]
+  change_summary:
+    - "SUR 외 모든 근거 태그를 LOG 하나로 통합. ASM·PRJ 분리 제거."
+    - "설문 기반 사용자 도메인과 R-U1~R-U6 관계 ID 유지."
+    - "R9(Q11~Q12) 교차확인 사례 추가; R9의 Q5는 분기 오류로 제외."
+    - "리포트 → 전망 결합 → 위험제약 최적화 → 설명 → 검증 관계 추가."
+    - "데이터 시점, 10거래일·10오프셋, 결정 근거 재계산, 테스트 계약 명시."
+  stage: "설계 초안 — 미구현·미검증 항목 포함"
 
-# ─────────────────────────────────────────────
-# 0. 근거 태그 — 모든 항목은 아래 셋 중 하나로 근거 등급을 표기한다
-#    관찰된 행동 = SUR / 원인에 대한 추정 = ASM / 시스템 구조 = PRJ
-# ─────────────────────────────────────────────
-evidence_tags:
-  SUR: { meaning: "설문에서 직접 관찰된 행동·응답", status: "확인됨 (n=10 한계 내)" }
-  ASM: { meaning: "팀이 세운 가정 (원인 추정, 해결 효과 추정)", status: "미검증 — 인터뷰·테스트 대상" }
-  PRJ: { meaning: "팀 합의 설계 결정 (데이터 구조, 시스템 구성)", status: "합의됨 — 설문에서 도출된 것이 아님" }
+provenance_policy:
+  tags:
+    SUR: "원본 설문 응답에서 직접 확인된 내용(표본 10명 범위에서만 유효)"
+    LOG: "설문으로 직접 확인되지 않은 모든 항목: 가설, 해석, 기술 설계, 요구사항, 검증 계획"
+  rules:
+    - "SUR/LOG 외 별도의 ASM, PRJ, HYP 등 근거 태그를 만들지 않는다."
+    - "LOG는 확인된 사실이라는 뜻이 아니다. 가설의 효과는 별도로 시험한다."
+    - "복합 문장에서는 설문 관찰은 SUR, 그로부터의 일반화·원인 추정은 LOG로 참조한다."
+    - "LOG 항목은 동일한 project_log 목록에 놓고 필요하면 validation_plan만 기록한다."
+    - "예측력, 위험 개선, 사용자 신뢰 상승은 아직 관측된 서비스 성과로 표시하지 않는다."
 
-evidence:
+survey_evidence:
   - id: SUR-01
-    content: "조언 수신자 5명 중 4명이 제안을 전부 실행하지는 않음 (일부 실행 2명: R1·R3 / 미실행 2명: R6·R10). 이 중 3명은 신뢰·확신 부재를 이유로 들었고(R1·R3·R10), 1명은 귀찮음(R6)"
-    quotes: ["믿음직스럽지 않아서", "지인 의견에 모두 동의할 수 없어서", "확신이 들지않았기때문."]
-    sources: [R1, R3, R6, R10]
+    statement: "자산배분 조언 수신자 5명 중 4명이 전부 실행하지 않음: 일부 실행 R1·R3, 미실행 R6·R10. 불신·불확신 R1·R3·R10, 귀찮음 R6."
+    respondents: [R1, R2, R3, R6, R10]
     questions: [Q1, Q2, Q3]
+    quotes: ["믿음직스럽지 않아서", "지인 의견에 모두 동의할 수 없어서", "확신이 들지않았기때문."]
   - id: SUR-02
-    content: "교차확인을 시도한 대상층은 비용이 크거나 확신에 실패함 — 백테스트 2시간(R1), 뉴스·시황 며칠(R3), 확신 못 얻음(R6)"
-    sources: [R1, R3, R6]
-    counter_evidence: "R2는 지인·검색으로 10분 내 확신 (SUR-10)"
-    excluded: "R9 — Q1에서 조언 수신 없음, Q5 응답은 분기 오염으로 제외"
+    statement: "추가 확인 사례에서 R1은 백테스트에 2시간, R3는 뉴스·시황 확인에 며칠을 사용. R2는 약 10분 내 확신을 얻음."
+    respondents: [R1, R2, R3]
     questions: [Q4, Q5]
+    caveats:
+      - "R6는 Q4에서 '아무것도 안함', Q5에서 '확신을 못얻음'이라고 응답해 확인 행동 사례로 단정하지 않는다."
+      - "R9는 Q1에서 조언 미수신이므로 Q5 응답은 이 도메인 분석에서 제외한다."
   - id: SUR-03
-    content: "결정 직전 30분 행동에 '그냥 샀다' 5/10 (R1·R2·R5·R7·R8)"
-    sources: [R1, R2, R5, R7, R8]
-    caveat: "Q9 질문문에 '그냥 샀다'가 예시로 포함되어 응답 유도 가능. 이 중 4명(R1·R2·R5·R7)은 Q10에서 출처를 확인했다고 답함 → '무확인 실행'의 증거로 사용하지 않음 (ASM-01 참조)"
+    statement: "결정 직전 30분 행동에서 '그냥 샀다' 응답 5/10(R1·R2·R5·R7·R8)."
+    respondents: [R1, R2, R5, R7, R8]
     questions: [Q9, Q10]
+    caveat: "Q9 예시 문구에 '그냥 샀다'가 포함되어 유도 가능. R1·R2·R5·R7은 Q10에서 출처 확인을 보고했으므로 무검증 매수로 해석하지 않는다."
   - id: SUR-04
-    content: "결정 전 확인한 출처 — 유튜브 4(R1·R2·R5·R10), 뉴스 기사 2(R2·R5), 차트 2(R7·R9), 커뮤니티 1(R10), 리포트 1(R7), 공시 0, 아무것도 안 봄 2(R6·R8)"
+    statement: "Q10의 확인 출처: 유튜브 4명, 뉴스 2명, 차트 2명, 커뮤니티 1명, 리포트 1명, 공시 0명, 아무것도 안 봄 2명."
     questions: [Q10]
+    caveat: "Q10의 '공시 0명'은 Q11의 R7 공시 확인 경험을 부정하지 않음(서로 다른 질문)."
   - id: SUR-05
-    content: "낡은·부정확 정보를 근거로 한 투자 판단 사례"
-    quotes: ["클래리티 법안 통과 여부를 보고 부정적인 시각에서 이더리움 숏을 쳤다."]
-    sources: [R1]
-    caveat: "R1은 대상에서 제외한 전문가 유형 — 대상층의 손실 증거가 아니라 참고 신호로만 사용"
+    statement: "R1이 낡았거나 부정확했을 수 있는 정보에 관한 질문(Q13)에 이더리움 숏 거래 사례를 기술함."
+    respondents: [R1]
     questions: [Q13]
+    caveat: "이 답변만으로 정보의 실제 오류, 인과관계, 손실 발생을 확인할 수 없음. R1은 서비스의 주요 대상군도 아님."
   - id: SUR-06
-    content: "생성형 AI를 금융 정보 채널로 사용 4/10 — 자산배분 논의(R10, Q1), 시황 확인 루틴(R7, Q14), 제도 자격 확인(R8, Q21), 제도 탐색 경로(R6, Q22). 투자 판단 용도는 2명(R7·R10)"
-    sources: [R6, R7, R8, R10]
+    statement: "생성형 AI를 금융·제도 정보 채널로 활용한 응답자 4명(R6·R7·R8·R10); 투자 판단에 직접 활용한 사례는 R7·R10."
+    respondents: [R6, R7, R8, R10]
+    questions: [Q1, Q14, Q21, Q22]
   - id: SUR-07
-    content: "금융앱 추천 포트폴리오를 그대로 실행한 경험 0/10. 이유는 '본 적 없음·해당 없음' 다수, 시드 부족(R6), 직접 투자(R7)이며 불신은 R2 1명"
-    quotes: ["거짓같아서"]
-    sources: [R2]
-    caveat: "불신의 증거로 쓰지 않음 (rejected_hypotheses 참조)"
+    statement: "금융앱 추천 포트폴리오를 그대로 실행한 경험 0/10. 미경험·자금 부족·직접 투자 등 이유가 다수이며 명시적 불신은 R2 한 명."
+    respondents: [R2, R6, R7]
     questions: [Q8]
+    caveat: "실행 경험이 0이라는 이유만으로 금융앱 불신이 보편적이라고 주장하지 않는다."
   - id: SUR-08
-    content: "자산관리·투자 정보에 대한 유료 지불 경험 0/10"
+    statement: "자산관리·투자정보에 대한 유료 지불 경험이 확인된 응답자는 0/10."
     questions: [Q7, Q16]
+    caveat: "지불 경험 부재는 지불 의사가 없다는 증거가 아님."
   - id: SUR-09
-    content: "보유 자산 뉴스·시황 확인 루틴 없음 6/10 (R2·R3·R4·R6·R8·R9)"
+    statement: "보유 자산 뉴스·시황 확인 루틴이 없다고 답한 응답자 6명(R2·R3·R4·R6·R8·R9)."
+    respondents: [R2, R3, R4, R6, R8, R9]
     questions: [Q14]
   - id: SUR-10
-    content: "검증 비용이 낮은 응답자 존재 — R2는 10분 내 확신 후 제안대로 실행, R7은 의심 정보를 공시로 5분 만에 확인"
-    sources: [R2, R7]
+    statement: "낮은 확인 비용의 반례: R2는 약 10분 내 확신 후 제안을 실행, R7은 의심 정보를 공시로 약 5분 만에 확인하고 판단함."
+    respondents: [R2, R7]
     questions: [Q2, Q5, Q11, Q12]
+  - id: SUR-11
+    statement: "R9는 의심스러운 투자 정보를 다른 출처와 교차확인했고, Q12에서 '10분 걸렸음. 상황마다 다름'이라고 답함."
+    respondents: [R9]
+    questions: [Q11, Q12]
+    caveat: "항상 결론에 도달하지 못한다는 해석은 '상황마다 다름'의 제한된 의미로만 제시. Q5의 R9 응답과 혼합하지 않는다."
+  - id: SUR-12
+    statement: "금융정책 상품 이용 경험 응답자는 일부 있었으나 기존 조사에서 헛걸음·중도포기 경험 지표는 0/10으로 정리됨."
+    questions: [Q17, Q19, Q24]
+    caveat: "'금융정책 관련 경험 자체가 없었다'는 문장은 원본과 불일치. 제외 이유는 조사된 핵심 문제 경험이 부족했다는 것."
 
-assumptions:
-  - id: ASM-01
-    hypothesis: "교차확인에 실패한 경험이 쌓이면 이후 확인 없이 실행하게 된다 (학습된 검증 포기)"
-    note: "SUR-03의 '그냥 샀다'는 유도 가능성이 있어 이 가정의 근거로 충분하지 않음"
-    validation: "인터뷰: 최근 매수 1건을 따라가며 확인 여부와 그 이유를 질문"
-  - id: ASM-02
-    hypothesis: "추천 비중에 출처가 연결된 설명이 붙으면 실행 확신이 상승한다"
-    validation: "프로토타입 반응 테스트 — 설명 노출 후 실행 결정 도달 여부"
-  - id: ASM-03
-    hypothesis: "생성형 AI를 금융 정보에 쓰는 사용자는 답변의 사실성을 확인할 수단을 원한다"
-    validation: "인터뷰: SUR-06 유형 사용자 집중 섭외"
-  - id: ASM-04
-    hypothesis: "뉴스·시황과 비중을 연결한 설명이 '왜 이 비중인가'에 대한 이해를 높인다"
-    validation: "사용성 테스트"
-  - id: ASM-05
-    hypothesis: "서비스는 무료 사용을 전제한다 (SUR-08에 근거한 스코프 결정)"
-    validation: null   # 결정사항
-  - id: ASM-06
-    hypothesis: "사용자가 제안을 불신하는 주된 이유는 제안의 근거를 확인할 수 없기 때문이다"
-    note: "응답자는 불신·불확신을 말했지만(SUR-01) 그 원인이 근거 부재라고 직접 말하지는 않음"
-    validation: "인터뷰: 불신했던 제안 1건에 대해 '무엇이 있었으면 실행했나'가 아니라 '그때 무엇을 확인하려 했나'를 질문"
-  - id: ASM-07
-    hypothesis: "최적화기가 산출한 비중은 대상 사용자에게 자산배분 제안의 한 형태로 전달될 수 있다"
-    note: "설문 응답자 중 최적화 비중을 받아 본 사람은 직접 구현한 R1뿐"
-    validation: "프로토타입 테스트 — 대상 사용자가 산출 비중을 제안으로 받아들이는지 관찰"
+# SUR가 아닌 기존 ASM-01~07 및 PRJ 설계 판단은 아래 한 목록으로 통합한다.
+project_log:
+  - id: LOG-001
+    statement: "문제 범위는 서로 다른 투자 근거를 비교해 포트폴리오 결정에 연결하고, 그 결정 근거를 확인하기 어려운 과정으로 정한다."
+    related_survey: [SUR-01, SUR-02, SUR-11]
+    validation_plan: "추가 인터뷰 및 사용성 시험으로 문제 강도와 대상 적합성 확인"
+  - id: LOG-002
+    statement: "주요 타겟 후보는 R3 같은 확인 비용 경험자 및 R9 같은 정보 교차확인 사용자. R6는 단순 미실행만으로 타겟에 포함하지 않음."
+    related_survey: [SUR-01, SUR-02, SUR-10, SUR-11]
+    validation_plan: "포트폴리오 제안 이해·비교 과업으로 타겟 적합성 평가"
+  - id: LOG-003
+    legacy_refs: [ASM-06]
+    statement: "투자 제안에 대한 불신의 주요 원인이 근거를 확인할 수 없기 때문이라는 설명은 미검증 해석."
+    validation_plan: "실제 불신 사례 1건을 회고하며 당시 확인한 정보와 의사결정 경로 인터뷰"
+  - id: LOG-004
+    legacy_refs: [ASM-01]
+    statement: "반복된 교차확인 실패가 이후 확인 포기로 이어질 수 있다는 가설은 아직 지지되지 않음."
+    validation_plan: "시간순 의사결정 기록을 수집해 확인 생략 원인을 구분"
+  - id: LOG-005
+    legacy_refs: [ASM-02, ASM-04]
+    statement: "출처 및 계산 근거가 연결된 설명이 비중 결정 이해와 판단 확신을 높일 수 있다는 서비스 가설."
+    validation_plan: "출처 없는 설명 대비 이해도·근거 식별 과업 비교"
+  - id: LOG-006
+    legacy_refs: [ASM-03]
+    statement: "생성형 AI 이용자는 금융 답변의 사실성을 추가 검증하는 기능을 원할 수 있음."
+    validation_plan: "서비스 필요도 및 실제 검증 행동 인터뷰"
+  - id: LOG-007
+    legacy_refs: [ASM-07]
+    statement: "최적화기가 산출한 종목·비중을 투자자가 자산배분 제안의 한 형태로 받아들일 수 있다는 가설."
+    validation_plan: "실제 포트폴리오 화면을 보여주고 사용자의 행동 관찰"
+  - id: LOG-008
+    legacy_refs: [ASM-05]
+    statement: "기존 무료 서비스 전제는 확정하지 않음. 설문상 지불 경험 0/10은 과금 모델 배제 근거가 아님."
+    related_survey: [SUR-08]
+    validation_plan: "상용화 시 별도 가격·수요 조사"
+  - id: LOG-009
+    statement: "모델은 STABLE 조건부 확산모델이며, 10거래일 경로에서 기대수익·공분산·꼬리손실 정보를 추출하는 구상."
+    validation_plan: "추론 기록과 경로 기반 위험 추정의 재현성 시험"
+  - id: LOG-010
+    statement: "리포트는 발행·실제 이용 가능 시각과 함께 목표주가, 실적 추정치, 수정 방향, 원문 근거로 구조화."
+    validation_plan: "원문 대조 정확도 및 시점 누출 평가"
+  - id: LOG-011
+    statement: "리포트의 장기 목표주가 상승여력을 10일 기대수익률로 직접 대입하지 않고, 단기 예측 또는 잔차 보정 신호로 변환."
+    validation_plan: "시계열 외부 평가로 단기 정보 가치 검증"
+  - id: LOG-012
+    statement: "리포트 신뢰도·정보 중복을 반영해 diffusion 전망에 추가적으로 기여하는 정보만 결합. 결합 방식은 비교 실험으로 선정."
+    validation_plan: "STABLE 단독 대비 예측·포트 성과 개선 및 중복 정보 점검"
+  - id: LOG-013
+    statement: "STABLE 내부의 BL과 외부 리포트 결합을 중복 업데이트하지 않도록 추론·결합 순서를 명확히 정의."
+    validation_plan: "동일 prior·view의 중복 반영 여부 단위 테스트"
+  - id: LOG-014
+    statement: "최적화는 기대수익과 분산·CVaR·거래비용·기존 포트폴리오 이탈을 후보 목적항으로 사용. 계수는 고정값으로 주장하지 않음."
+    validation_plan: "각 손실항을 하나씩 제거한 ablation 및 과거 훈련 구간에서의 계수 선정"
+  - id: LOG-015
+    statement: "롱온리, 개별 종목 상한, 섹터 상한, 현금 허용을 하드 제약으로 두며 무단 완화 금지."
+    validation_plan: "불능·경계 사례를 포함한 제약 검사"
+  - id: LOG-016
+    statement: "10거래일 보유·10오프셋 운영에서는 잔여 9개 오프셋의 현재 노출을 포함하여 새 오프셋만 계산."
+    validation_plan: "고정 보유분이 상한을 초과한 사례의 실패·예외 규칙 검증"
+  - id: LOG-017
+    statement: "LLM 에이전트는 수집·구조화, 설명, 설명 검증을 담당; 경로 생성과 비중 최적화는 결정론적 코드가 담당."
+    validation_plan: "실행 추적과 컴포넌트별 통합 시험"
+  - id: LOG-018
+    statement: "설명 주장에는 리포트 원문 또는 계산 기록을 연결하고, 제약으로 비중이 변했다는 인과 주장은 반사실적 재계산으로 검증."
+    validation_plan: "주장별 근거 유형 및 재계산 테스트"
+  - id: LOG-019
+    statement: "백테스트의 정보 누출 방지를 위해 실제 이용 가능 시각을 기준으로 판단하고, 불명확한 공개시각은 보수적 정책으로 처리."
+    validation_plan: "경계시점·수정본·시간대 변형 사례 50건 시험"
+  - id: LOG-020
+    statement: "전체 전략은 EW, STABLE, STABLE+Risk, STABLE+Report, Full을 동일 기준으로 비교하고 거래비용 왕복 30/60bps를 시험."
+    validation_plan: "순차적 기간분할·10오프셋 통합 백테스트 및 Sharpe·MDD·변동성·섹터 집중도 측정"
+  - id: LOG-021
+    statement: "결합 전략이 기존 방식보다 위험 대비 성과와 안정성을 개선할 수 있다는 가설은 미검증."
+    validation_plan: "동일 조건 비교군 및 기간·레짐 강건성 시험"
+  - id: LOG-022
+    statement: "사용자가 리포트 출처와 계산 기록을 연결한 설명을 통해 결정 이유를 확인할 수 있다는 가설은 미검증."
+    validation_plan: "비중 결정 원인 찾기·출처 추적·예측과 사실 구분 과업 평가"
+  - id: LOG-023
+    statement: "개별 실행에서는 미검증 주장이나 핵심 수치 오류를 공개하지 않는다. 검증 에이전트의 시험 정확도와 공개 조건은 분리한다."
+    validation_plan: "오류 주입 시험, 차단/재실행 테스트"
+  - id: LOG-024
+    statement: "비범위는 실제 매매 자동 실행, 수익 보장, 개인별 투자 적합성 평가, 미확인 정보의 임의 보완."
+    validation_plan: "UI 문구 및 API 호출 경로 검토"
+  - id: LOG-025
+    statement: "외부 증권사 리포트 이용약관과 상업적 사용 가능 범위, 투자자문·유사투자자문 관련 규제를 별도 검토해야 함."
+    validation_plan: "서비스 배포 전 라이선스·법률 점검"
 
-# ─────────────────────────────────────────────
-# 1. 사용자 도메인 — 관찰된 행동 (근거: SUR)
-# ─────────────────────────────────────────────
+domain_selection:
+  considered: ["종합 자산관리", "투자 의견 정교화", "금융정책·공공지원 탐색"]
+  selected: "투자 의견 정교화"
+  rationale: "자산배분 조언의 수용 여부와 정보 교차확인 과정에서 어려움이 발견되어 제안 검토·판단 단계에 집중."
+  excluded:
+    - name: "금융정책·공공지원 탐색"
+      rationale: "정책 이용 사례 자체는 있으나, 조사한 헛걸음·중도포기 경험은 확인되지 않아 핵심 페인포인트로 채택하지 않음."
+      refs: [SUR-12]
+  refs: [SUR-01, SUR-02, SUR-11, SUR-12, LOG-001]
+
+problem_definition:
+  audience: "여러 투자 근거를 확인해도 비교와 최종 판단에 어려움을 겪는 개인투자자"
+  problem: "다양한 전망을 일관된 위험 기준으로 포트폴리오 비중에 연결하기 어렵고, 제안된 비중의 근거를 검증하기 어렵다."
+  references: [SUR-01, SUR-02, SUR-11, LOG-001, LOG-003]
+  boundaries:
+    - "설문만으로 투자 성과 개선이나 신뢰 상승이 입증된 것은 아니다."
+    - "개인투자자 전체를 대표한다는 주장은 하지 않는다."
+
 user_domain:
   concepts:
     - id: investor
       name: "투자자"
-      definition: "투자는 하지만 정보 확인 루틴이 약한 2030 개인투자자"
+      definition: "정보를 확인하고 조언 실행 여부를 결정하는 사람"
       attributes:
-        has_check_routine: { type: bool, evidence: [SUR-09] }
-        info_sources: { type: "list[유튜브|기사|커뮤니티|리포트|공시|차트|생성형AI]", evidence: [SUR-04, SUR-06] }
+        has_check_routine: {type: boolean, refs: [SUR-09]}
+        info_sources: {type: "list[string]", refs: [SUR-04, SUR-06]}
     - id: advice_channel
       name: "조언 채널"
-      definition: "자산배분 제안을 주는 곳"
+      definition: "투자 제안을 제공하는 지인·유튜브·앱·AI 등의 경로"
       attributes:
-        kind: { type: "유튜브|지인|금융앱|생성형AI|부모님", evidence: [SUR-01, SUR-06] }
+        kind: {type: string, refs: [SUR-01, SUR-06]}
     - id: advice_proposal
       name: "자산배분 제안"
-      definition: "채널이 투자자에게 주는 비중·종목 제안"
+      definition: "특정 종목·자산과 비중에 관한 투자 제안"
       attributes:
-        has_stated_basis: { type: bool, note: "제안에 근거가 함께 제시되는지", evidence: [ASM-06] }
-
-  relations:   # 값은 개념이 아니라 관계(행동)에 붙는다
-    - id: R-U1
-      subject: advice_channel
-      relation: "제공한다"
-      object: advice_proposal
-      evidence: [SUR-01]
-    - id: R-U2
-      subject: investor
-      relation: "받는다"
-      object: advice_proposal
-      attributes:
-        received_at: { type: date }
-      evidence: [SUR-01]
-    - id: R-U3
-      subject: investor
-      relation: "신뢰한다"
-      object: advice_proposal
-      attributes:
-        trusted: { type: bool, note: "사용자의 믿음 — 내용이 사실인지와는 별개" }
-      evidence: [SUR-01]
+        has_stated_basis: {type: boolean, refs: [LOG-003]}
+  relations:
+    - {id: R-U1, subject: advice_channel, predicate: "제공한다", object: advice_proposal, refs: [SUR-01]}
+    - {id: R-U2, subject: investor, predicate: "받는다", object: advice_proposal, attributes: {received_at: datetime}, refs: [SUR-01]}
+    - {id: R-U3, subject: investor, predicate: "신뢰한다", object: advice_proposal, attributes: {trusted: boolean}, refs: [SUR-01]}
     - id: R-U4
       subject: investor
-      relation: "실행한다"
+      predicate: "실행한다"
       object: advice_proposal
-      attributes:
-        degree: { type: "전부|일부|안함" }
-        reason: { type: text, example: "믿음직스럽지 않아서" }
-      evidence: [SUR-01]
+      attributes: {degree: "전부|일부|안함", reason: string}
+      refs: [SUR-01]
     - id: R-U5
       subject: investor
-      relation: "교차확인한다"
+      predicate: "교차확인한다"
       object: advice_proposal
-      attributes:
-        method: { type: "백테스트|뉴스·시황|지인|검색|공시", evidence: [SUR-02] }
-        duration: { type: text, example: "2시간, 며칠" }
-        confidence_reached: { type: bool }
-      evidence: [SUR-02, SUR-10]
+      attributes: {method: string, duration: string, confidence_reached: "boolean|null"}
+      refs: [SUR-02, SUR-10]
     - id: R-U6
       subject: investor
-      relation: "참고한다"
+      predicate: "참고한다"
       object: market_info_item
-      attributes:
-        recency_checked: { type: bool }
-      evidence: [SUR-04, SUR-05]
+      attributes: {recency_checked: "boolean|null"}
+      refs: [SUR-04, SUR-05]
+  instance_examples:
+    - respondent: R3
+      relations:
+        - {relation_id: R-U2, proposal: "지인의 자산배분 제안"}
+        - {relation_id: R-U4, degree: "일부", reason: "지인 의견에 모두 동의할 수 없어서"}
+        - {relation_id: R-U5, method: "뉴스·시황", duration: "며칠"}
+      refs: [SUR-01, SUR-02]
+    - respondent: R9
+      event: "투자 정보의 사실성 확인(Q11~Q12)"
+      action: "다른 출처와 교차확인, 약 10분, 결론 도달 여부는 상황별 상이"
+      caution: "R9는 Q1의 자산배분 제안 수신자가 아니므로 R-U5의 특정 제안 확인 사례로 병합하지 않는다."
+      refs: [SUR-11]
+  audience_segments:
+    - {id: primary_candidates, members: [R3, R9], basis: "확인 비용 또는 정보 비교 경험", refs: [SUR-02, SUR-11, LOG-002]}
+    - {id: low_cost_verifiers, members: [R2, R7], basis: "빠른 검증 후 판단", refs: [SUR-10]}
+    - {id: not_inferred_from_nonexecution, members: [R6], basis: "미실행 원인이 귀찮음", refs: [SUR-01, LOG-002]}
+    - {id: advanced_user, members: [R1], basis: "자체 백테스트·모델 검증", refs: [SUR-02]}
 
-  example_instance:   # R3 응답을 위 구조로 기록한 예
-    respondent: R3
-    facts:
-      - { relation: R-U2, object: "지인의 제안" }
-      - { relation: R-U4, degree: "일부", reason: "지인 의견에 모두 동의할 수 없어서" }
-      - { relation: R-U5, method: "뉴스·시황", duration: "며칠" }
-
-# ─────────────────────────────────────────────
-# 2. 시스템 도메인 — 데이터 구조 (근거: PRJ, 설문에서 도출된 것이 아님)
-# ─────────────────────────────────────────────
 system_domain:
   concepts:
+    - id: asset
+      name: "투자 종목"
+      attributes: {ticker: string, sector_id: string, trading_status: string}
+    - id: market_info_item
+      name: "시장 정보 원문"
+      attributes:
+        document_id: string
+        source_url: string
+        published_at: "datetime|null"
+        available_at: "datetime|null"
+        retrieved_at: datetime
+        version_id: string
+        source_type: "공시|뉴스|증권사리포트|기타"
+    - id: analyst_report
+      name: "증권사 리포트"
+      parent: market_info_item
+      attributes:
+        report_id: string
+        ticker: string
+        broker: string
+        author: "string|null"
+        target_price: "number|null"
+        eps_estimate: "number|null"
+        estimate_horizon: "string|null"
+        opinion: "string|null"
+        page_evidence: "list[page_or_quote]"
+    - id: report_signal
+      name: "리포트 유래 투자 신호"
+      attributes:
+        as_of: datetime
+        ticker: string
+        horizon_trading_days: integer
+        target_revision: "number|null"
+        eps_revision: "number|null"
+        sentiment: "number|null"
+        calibrated_10d_adjustment: "number|null"
+        signal_uncertainty: "number|null"
+        training_version: "string|null"
+        evidence_report_ids: "list[string]"
+      note: "원문 목표주가를 단기 수익률로 직접 간주하지 않음"
+    - id: data_snapshot
+      name: "시점별 데이터 스냅샷"
+      attributes: {as_of: datetime, data_hash: string, universe_version: string, report_cutoff: datetime}
+    - id: diffusion_run
+      name: "조건부 확산모델 실행"
+      attributes:
+        model_family: "STABLE"
+        checkpoint_id: string
+        config_hash: string
+        seeds: "list[integer]"
+        scenario_count: integer
+        horizon_trading_days: integer
+        input_snapshot_id: string
+        beta_value: "number|null"
+    - id: scenario_set
+      name: "미래 수익률 경로 집합"
+      attributes: {shape: "[시나리오, 종목, 미래거래일]", scenario_weights: "list[number]", return_definition: string}
+    - id: forecast_summary
+      name: "Diffusion 추정치"
+      attributes:
+        expected_returns_10d: "map[ticker,number]"
+        covariance_10d: "matrix"
+        tail_loss_scenarios: "list[scenario_id]"
+        mean_estimation_uncertainty: "matrix|null"
+      note: "미래 수익률 공분산과 평균 추정 오차 공분산은 구분"
+    - id: fusion_run
+      name: "전망 결합 실행"
+      attributes:
+        method: "calibrated_residual|uncertainty_weighted_view|other"
+        fused_expected_returns_10d: "map[ticker,number]"
+        input_report_signal_ids: "list[string]"
+        input_forecast_id: string
+        confidence_method: string
+        config_hash: string
+      note: "방법은 실험으로 선정; 동일 view 이중 반영 금지"
+    - id: risk_constraint
+      name: "위험·거래 제약"
+      attributes:
+        constraint_id: string
+        kind: "long_only|stock_cap|sector_cap|cash|tradability|other"
+        value: "number|boolean|string"
+        scope: "new_cohort|aggregate_portfolio"
+        is_hard: boolean
+    - id: cohort
+      name: "보유 오프셋"
+      attributes: {offset_id: integer, entry_date: date, exit_date: date, current_weights: "map[ticker,number]", nominal_allocation: number}
     - id: portfolio_optimizer
-      name: "포트폴리오 최적화기"
-      definition: "기존 알고리즘. 수익률·공분산 등 수치 입력으로 비중을 산출하는 외부 모듈"
+      name: "포트폴리오 최적화 코드"
+      attributes:
+        objective_components: "return|variance|cvar|transaction_cost|deviation"
+        long_only: boolean
+        solver_version: string
+      note: "LLM이 비중을 직접 결정하지 않음"
+    - id: optimization_run
+      name: "최적화 실행 기록"
+      attributes:
+        run_id: string
+        as_of: datetime
+        input_forecast_id: string
+        input_fusion_id: string
+        constraint_ids: "list[string]"
+        existing_cohort_ids: "list[string]"
+        costs_assumption: string
+        objective_terms: "map[string,number]"
+        activated_constraints: "list[string]"
+        solver_status: "pass|infeasible|error"
+        input_hash: string
+        output_hash: string
     - id: recommended_portfolio
       name: "추천 포트폴리오"
       attributes:
-        weights: { type: "map[자산 → 비중]" }
-        t_opt: { type: datetime, note: "산출 기준시점" }
-        data_period: { type: "기간", note: "산출에 사용된 입력 데이터 기간" }
-    - id: market_info_item
-      name: "시장 정보"
-      definition: "수집된 뉴스·시황·공시 단위 문서"
-      attributes:
-        source_url: { type: url }
-        t_pub: { type: datetime, note: "발행시각" }
-        t_crawl: { type: datetime, note: "수집시각" }
-        source_grade: { type: "공시|언론|커뮤니티" }
-        pool: { type: "산출근거|최신참고", rule: "t_pub ≤ t_opt → 산출근거, t_pub > t_opt → 최신참고" }
+        weights: "map[ticker,number]"
+        cash_weight: number
+        as_of: datetime
+        horizon_trading_days: integer
+        offset_id: "integer|null"
+        aggregate_exposure: "map[ticker,number]"
+        data_period: string
+      invariant: "sum(weights)+cash_weight=1 (신규 포트폴리오 기준)"
+    - id: counterfactual_run
+      name: "제약·정보 반사실적 재계산"
+      attributes: {base_run_id: string, changed_condition: string, reoptimized_weights: "map[ticker,number]", difference: "map[ticker,number]"}
+      note: "비중 변경 원인 단정은 재계산 근거가 있을 때만 가능"
     - id: explanation
-      name: "설명"
-      definition: "비중과 시장 정보를 연결한 챗봇 응답"
+      name: "설명 문서"
+      attributes:
+        portfolio_id: string
+        required_sections: [selection_basis, report_basis, weight_reason, risk_constraints, uncertainty]
+        generated_at: datetime
     - id: claim
-      name: "주장"
-      definition: "설명 안에서 검증 가능한 최소 사실 단위"
+      name: "검증 가능 주장"
       attributes:
-        text: { type: text }
-        cited_numbers: { type: "list[number]" }
-        pool_label: { type: "산출근거|최신참고" }
+        claim_id: string
+        text: string
+        kind: "external_fact|model_output|optimizer_result|causal_explanation|limitation"
+        basis_time: datetime
+        evidence_refs: "list[evidence_ref]"
+        numeric_values: "list[number]"
+    - id: decision_evidence
+      name: "결정·설명의 근거"
+      attributes:
+        evidence_id: string
+        evidence_kind: "report_quote|forecast_value|optimization_output|counterfactual|constraint_record"
+        resource_id: string
+        locator: "page|field|run_id"
+        evidence_as_of: datetime
     - id: verdict
-      name: "검증 판정"
+      name: "주장 검증 판정"
       attributes:
-        label: { type: "pass|reject|warn" }
-        layer: { type: "출처존재|정합성|시점" }
-        reason: { type: text }
+        label: "pass|reject|warn"
+        checks: "source_presence|content_match|numeric_match|time_match|decision_fidelity"
+        reason: string
+        checked_at: datetime
+        claim_version: string
+    - id: verification_run
+      name: "설명 전체 검증 실행"
+      attributes:
+        run_id: string
+        claim_ids: "list[string]"
+        error_count: integer
+        unpublished_claim_count: integer
+        release_status: "pass|blocked"
+    - id: backtest_run
+      name: "전략 비교 백테스트"
+      attributes:
+        period: string
+        universe: "list[ticker]"
+        strategies: [EW, STABLE, STABLE_RISK, STABLE_REPORT, FULL]
+        trading_horizon_days: 10
+        offsets: 10
+        round_trip_cost_bps: "30|60"
+        metrics: [Sharpe, MDD, volatility, sector_concentration, turnover]
 
   relations:
-    - { id: R-S1, subject: portfolio_optimizer, relation: "산출한다", object: recommended_portfolio }
-    - { id: R-S2, subject: explanation, relation: "구성된다", object: claim, cardinality: "1..n" }
-    - { id: R-S3, subject: claim, relation: "설명한다", object: recommended_portfolio }
-    - { id: R-S4, subject: claim, relation: "인용한다", object: market_info_item, cardinality: "1..n", note: "출처 없는 주장은 생성 금지 (AC-03a)" }
-    - { id: R-S5, subject: verdict, relation: "판정한다", object: claim, cardinality: "주장당 1" }
+    - {id: R-S1, subject: portfolio_optimizer, predicate: "산출한다", object: recommended_portfolio, refs: [LOG-014]}
+    - {id: R-S2, subject: explanation, predicate: "구성된다", object: claim, cardinality: "1..n", refs: [LOG-018]}
+    - {id: R-S3, subject: claim, predicate: "설명한다", object: recommended_portfolio, refs: [LOG-018]}
+    - {id: R-S4, subject: claim, predicate: "인용한다", object: market_info_item, cardinality: "0..n", refs: [LOG-018]}
+    - {id: R-S5, subject: verdict, predicate: "판정한다", object: claim, cardinality: "유효 버전당 1", refs: [LOG-023]}
+    - {id: R-S6, subject: analyst_report, predicate: "정형 신호를 제공한다", object: report_signal, refs: [LOG-010, LOG-011]}
+    - {id: R-S7, subject: diffusion_run, predicate: "생성한다", object: scenario_set, refs: [LOG-009]}
+    - {id: R-S8, subject: scenario_set, predicate: "집계되어 추정한다", object: forecast_summary, refs: [LOG-009]}
+    - {id: R-S9, subject: fusion_run, predicate: "결합한다", object: forecast_summary, refs: [LOG-012]}
+    - {id: R-S10, subject: fusion_run, predicate: "활용한다", object: report_signal, refs: [LOG-012]}
+    - {id: R-S11, subject: optimization_run, predicate: "적용한다", object: risk_constraint, cardinality: "1..n", refs: [LOG-015]}
+    - {id: R-S12, subject: optimization_run, predicate: "참조한다", object: fusion_run, refs: [LOG-012, LOG-014]}
+    - {id: R-S13, subject: optimization_run, predicate: "참조한다", object: cohort, cardinality: "0..9", refs: [LOG-016]}
+    - {id: R-S14, subject: portfolio_optimizer, predicate: "실행 기록을 남긴다", object: optimization_run, refs: [LOG-017]}
+    - {id: R-S15, subject: optimization_run, predicate: "생성한다", object: recommended_portfolio, refs: [LOG-014]}
+    - {id: R-S16, subject: counterfactual_run, predicate: "재계산한다", object: optimization_run, refs: [LOG-018]}
+    - {id: R-S17, subject: claim, predicate: "근거로 삼는다", object: decision_evidence, cardinality: "1..n", refs: [LOG-018]}
+    - {id: R-S18, subject: decision_evidence, predicate: "원문을 가리킨다", object: analyst_report, refs: [LOG-018]}
+    - {id: R-S19, subject: decision_evidence, predicate: "계산을 가리킨다", object: optimization_run, refs: [LOG-018]}
+    - {id: R-S20, subject: decision_evidence, predicate: "재계산을 가리킨다", object: counterfactual_run, refs: [LOG-018]}
+    - {id: R-S21, subject: verification_run, predicate: "집계한다", object: verdict, refs: [LOG-023]}
+    - {id: R-S22, subject: backtest_run, predicate: "평가한다", object: recommended_portfolio, refs: [LOG-020]}
+    - {id: R-S23, subject: data_snapshot, predicate: "입력을 제공한다", object: diffusion_run, refs: [LOG-019]}
+    - {id: R-S24, subject: data_snapshot, predicate: "정보 기준시점을 제한한다", object: analyst_report, refs: [LOG-019]}
 
-  bridge:   # 사용자 도메인과 시스템 도메인의 연결
-    - { system: recommended_portfolio, user: advice_proposal, relation: "제안의 한 형태로 전달된다", evidence: [ASM-07] }
+  bridge_to_user_domain:
+    - {system: recommended_portfolio, user: advice_proposal, predicate: "투자자에게 제안으로 제공된다", refs: [LOG-007]}
+    - {system: explanation, user: investor, predicate: "결정 근거를 설명한다", refs: [LOG-005, LOG-022]}
 
-# ─────────────────────────────────────────────
-# 3. 신뢰와 검증의 경계
-# ─────────────────────────────────────────────
-trust_vs_verification:
-  trust: "투자자–제안 관계의 속성 (R-U3.trusted). 사용자의 믿음이며 사실 여부를 보장하지 않는다"
-  verification: "주장–출처 관계에 대한 시스템 판정 (R-S5). 출처가 존재하는가, 내용과 숫자가 맞는가, 시점이 맞는가"
-  link: "검증된 설명이 신뢰·확신을 높인다는 것은 기대 효과일 뿐이며 미검증 (ASM-02)"
+  semantic_rules:
+    - id: INV-01
+      statement: "설문에서 관찰한 사용자 신뢰(trusted)는 검증 시스템의 통과 판정과 독립이다."
+      refs: [SUR-01, LOG-023]
+    - id: INV-02
+      statement: "종목별 리포트가 없으면 해당 신호는 missing; 중립 또는 긍정 전망으로 채우지 않는다."
+      refs: [LOG-010, LOG-011]
+    - id: INV-03
+      statement: "백테스트 입력은 available_at <= as_of를 만족해야 하고, 원문 버전도 그 시점에 이용 가능해야 한다."
+      refs: [LOG-019]
+    - id: INV-04
+      statement: "공개시각이 불확실한 자료는 사전 정의한 보수적 사용 가능 시각으로 처리하거나 제외한다."
+      refs: [LOG-019]
+    - id: INV-05
+      statement: "10거래일 목표주가 신호의 시간 단위와 시나리오 수익률 단위가 일치해야 한다."
+      refs: [LOG-011]
+    - id: INV-06
+      statement: "공분산, CVaR, 평균 예측 불확실성은 서로 다른 정의이며 혼용하지 않는다."
+      refs: [LOG-009, LOG-014]
+    - id: INV-07
+      statement: "전체 포트폴리오의 섹터 상한은 잔존 오프셋의 현재 노출을 포함해 검사한다."
+      refs: [LOG-015, LOG-016]
+    - id: INV-08
+      statement: "기존 보유분만으로 상한 초과 시 새 오프셋만으로 해결 불가능할 수 있음. 제약 임의 완화 금지."
+      refs: [LOG-015, LOG-016]
+    - id: INV-09
+      statement: "'제약 때문에 비중 감소' 같은 인과 설명에는 해당 제약을 바꾼 반사실적 계산 근거 필요."
+      refs: [LOG-018]
+    - id: INV-10
+      statement: "인용 가능한 금융 사실 주장 또는 수치 주장에는 검증 가능한 근거가 1개 이상 연결되어야 한다."
+      refs: [LOG-018, LOG-023]
+    - id: INV-12
+      statement: "warn 판정은 근거가 남아 있는 위험·불확실성의 고지에 한해서만 허용하며, 출처 없는 금융 사실을 경고 표시로 공개하지 않는다."
+      refs: [LOG-023]
+    - id: INV-11
+      statement: "검증 불통과 설명은 공개하지 않는다; 에이전트 시험 성능과 개별 공개 승인 기준은 별개."
+      refs: [LOG-023]
 
-# ─────────────────────────────────────────────
-# 4. 인과 가설 — 속성 값끼리의 영향. 응답자가 직접 이유로 말한 연결만 confirmed
-# ─────────────────────────────────────────────
-causal_hypotheses:
-  - id: H-1
-    cause: "R-U3.trusted = false"
-    effect: "R-U4.degree ∈ {일부, 안함}"
-    status: confirmed
-    evidence: [SUR-01]
-    note: "R1·R3·R10이 미실행 이유로 불신·불확신을 직접 언급"
-  - id: H-2
-    cause: "advice_proposal.has_stated_basis = false"
-    effect: "R-U3.trusted = false"
-    status: assumed
-    evidence: [ASM-06]
-  - id: H-3
-    cause: "R-U5.confidence_reached = false (반복)"
-    effect: "이후 교차확인 없이 실행"
-    status: assumed
-    evidence: [ASM-01]
-    note: "인터뷰 최우선 검증 대상"
-  - id: H-4
-    cause: "R-U6.recency_checked = false"
-    effect: "금전 손실"
-    status: confirmed
-    evidence: [SUR-05]
-    scope: "대상 제외 유형(R1)에서만 관찰 — 대상층에서는 미확인"
-  - id: H-5
-    cause: "출처가 연결·검증된 설명 제공"
-    effect: "R-U3.trusted, R-U5.confidence_reached 상승"
-    status: assumed
-    evidence: [ASM-02]
+workflow:
+  - id: WF-01
+    name: "리포트 수집·구조화"
+    executor: "Collection Agent + timestamp/range validators"
+    inputs: [data_snapshot, asset]
+    outputs: [analyst_report, report_signal]
+    acceptance: AC-COLLECT
+    refs: [LOG-010, LOG-019]
+  - id: WF-02
+    name: "미래 경로 생성"
+    executor: "STABLE deterministic inference code"
+    inputs: [data_snapshot]
+    outputs: [diffusion_run, scenario_set, forecast_summary]
+    acceptance: AC-MODEL
+    refs: [LOG-009, LOG-017]
+  - id: WF-03
+    name: "정보 결합·최적화"
+    executor: "fusion/optimizer deterministic code"
+    inputs: [forecast_summary, report_signal, risk_constraint, cohort]
+    outputs: [fusion_run, optimization_run, recommended_portfolio]
+    optional_outputs: [counterfactual_run]  # 비중 원인에 대한 인과 설명이 필요할 때
+    acceptance: AC-OPT
+    refs: [LOG-012, LOG-014, LOG-015, LOG-016]
+  - id: WF-04
+    name: "설명 생성"
+    executor: "Explanation Agent"
+    inputs: [recommended_portfolio, optimization_run, decision_evidence]
+    outputs: [explanation, claim]
+    acceptance: AC-EXPLAIN
+    refs: [LOG-018]
+  - id: WF-05
+    name: "독립 검증 및 공개 판정"
+    executor: "Verification Agent + deterministic numerical validators"
+    inputs: [explanation, claim, decision_evidence]
+    outputs: [verdict, verification_run]
+    acceptance: AC-VERIFY
+    refs: [LOG-023]
 
-# ─────────────────────────────────────────────
-# 5. 페인포인트
-# ─────────────────────────────────────────────
-pain_points:
-  - id: PAIN-01
-    description: "제안을 믿지 못해 실행을 보류하며, 그 원인이 근거를 확인할 수 없기 때문인지는 검증 중"
-    evidence: [SUR-01, ASM-06]
-  - id: PAIN-02
-    description: "스스로 확인하려면 수 시간~며칠이 들고, 확신에 실패하기도 함"
-    evidence: [SUR-02]
-  - id: PAIN-03
-    description: "확인 실패가 반복되면 확인 없이 실행하게 될 수 있음"
-    evidence: [ASM-01]
-  - id: PAIN-04
-    description: "낡은 정보를 최신으로 오인하면 손실로 이어질 수 있음"
-    evidence: [SUR-05]
-  - id: PAIN-05
-    description: "이미 쓰고 있는 생성형 AI 답변에는 사실성 확인 수단이 없음"
-    evidence: [SUR-06, ASM-03]
+acceptance_contracts:
+  # quality_test는 기능/에이전트 평가용; release_gate는 매 실행 결과 공개용.
+  - id: AC-COLLECT
+    release_gate:
+      - "as_of 누락 시 실행 거부"
+      - "활용 리포트 100% 원문 출처 및 사용 가능 시점 연결"
+      - "확인 불가능한 추정치는 투자 신호에서 제외"
+    quality_test:
+      - "날짜 경계 테스트 50건에서 미래 리포트 누출 0건"
+      - "목표주가·실적 수치 원문 대조 100건 중 99건 이상 일치"
+    refs: [LOG-010, LOG-019]
+  - id: AC-MODEL
+    release_gate:
+      - "동일 입력 스냅샷·체크포인트·시드·설정에서 재현 가능한 결과"
+      - "경로·기대수익·위험 출력의 누락 또는 NaN/Inf 0건"
+      - "모델 및 데이터 버전 기록"
+    refs: [LOG-009]
+  - id: AC-OPT
+    release_gate:
+      - "비중 합계(현금 포함) 1, 허용 수치오차 1e-6"
+      - "음수 비중 및 종목·섹터 하드 제약 위반 0건"
+      - "잔존 9개 오프셋 노출을 반영한 신규 포트폴리오 검증"
+      - "해가 없으면 실패 반환; 제약 임의 완화 금지"
+      - "결정 근거가 될 입력·제약·출력 이력 저장"
+    refs: [LOG-014, LOG-015, LOG-016]
+  - id: AC-EXPLAIN
+    release_gate:
+      - "선정 이유, 리포트 근거, 비중 이유, 위험관리, 불확실성 5개 적용 가능 항목 충족"
+      - "외부 금융 사실과 수치·제약 설명의 출처·계산 근거 연결률 100%"
+      - "제약 효과를 단정하는 문장은 재계산 근거 연결"
+    refs: [LOG-018]
+  - id: AC-VERIFY
+    quality_test:
+      - "출처 없는 주장 30건 중 27건 이상 검출"
+      - "왜곡된 주장 30건 중 24건 이상 검출"
+      - "정상 주장 30건 중 27건 이상 통과"
+      - "위 비율은 초기 성능 시험 목표이며 자동 공개의 충분조건이 아님"
+    release_gate:
+      - "모든 주장에 판정 부여"
+      - "반려·미검증 주장 최종 노출 0건"
+      - "비중·날짜·설정 수치는 코드로 전수 검사, 오류 0건"
+      - "warn은 근거 있는 불확실성 고지에만 허용; 검증되지 않은 금융 사실은 공개 차단"
+      - "미해결 오류가 있으면 공개 차단"
+    refs: [LOG-023]
 
-# ─────────────────────────────────────────────
-# 6. 사용자 구분 — 문제를 겪는 집단과 겪지 않는 집단
-# ─────────────────────────────────────────────
-segments:
-  - id: target
-    name: "확인 수단이 없는 저관여층"
-    respondents: [R3, R6, R10]
-    criteria: "제안을 받고 실행을 보류했거나, 확인에 큰 비용을 쓰고도 확신에 실패"
-    evidence: [SUR-01, SUR-02, SUR-09]
-  - id: low_cost_verifier
-    name: "검증 비용이 낮은 사람 — 대상 아님"
-    respondents: [R2, R7]
-    criteria: "10분 이내 확인으로 확신 획득"
-    evidence: [SUR-10]
-  - id: expert
-    name: "스스로 검증하는 전문가 — 대상 제외"
-    respondents: [R1]
-    criteria: "백테스트·자체 최적화 모델 등 독자적 검증 수단 보유 (Q4, Q15)"
-    note: "R1의 손실 사례(SUR-05)는 참고 신호로만 사용"
+design_traceability:
+  # 설문 근거 → 사용자 문제 → 시스템 데이터 → 공개 설명의 연결을 감사하기 위한 색인.
+  - {survey_refs: [SUR-01, SUR-02], user_relations: [R-U3, R-U4, R-U5], problem: "조언 검토에 시간·확신 부족", system_relations: [R-S17, R-S21]}
+  - {survey_refs: [SUR-11], user_relations: [], problem: "일반 투자정보 교차확인 후 판단의 불확실성", system_relations: [R-S18, R-S21]}
+  - {survey_refs: [SUR-10], user_relations: [R-U5], problem: "모두가 같은 문제를 겪는 것은 아님", system_relations: []}
+  - {survey_refs: [], log_refs: [LOG-009, LOG-012, LOG-015], problem: "증권사 전망과 모델 예측의 결합은 아직 검증할 설계", system_relations: [R-S7, R-S10, R-S11, R-S15]}
 
-# ─────────────────────────────────────────────
-# 7. 시스템 대응 — 검증은 신뢰가 아니라 근거성·사실성을 다룬다
-# ─────────────────────────────────────────────
-system_mapping:
-  - target: "최신성 — PAIN-04"
-    component: "Research Agent — 실시간 수집 + 시점 메타데이터(t_pub, t_crawl) + 풀 분류"
-    spec_ref: FR-02
-  - target: "근거 연결 — PAIN-01"
-    component: "Explanation Agent — 모든 주장에 출처 연결 (R-S4)"
-    spec_ref: FR-03
-    expected_effect: "신뢰 상승 (H-5, ASM-02 — 미검증)"
-  - target: "근거성·사실성 — PAIN-05"
-    component: "Verification Agent — 출처 존재·정합성·시점 3계층 판정 (R-S5), 무근거 주장 차단"
-    spec_ref: FR-04
-    expected_effect: "신뢰 상승 (H-5, ASM-02 — 미검증)"
-  - target: "확인 비용 — PAIN-02"
-    component: "시스템 전체 — 수 시간~며칠의 교차확인(R-U5.duration)을 대화 한 번으로"
-    spec_ref: NFR-01
+validation_plan:
+  portfolio_hypothesis:
+    statement: "Diffusion + 리포트 + 위험관리의 결합이 기존 포트폴리오보다 성과·위험에서 이점이 있는가"
+    comparisons: [EW, STABLE, STABLE_RISK, STABLE_REPORT, FULL]
+    evaluation:
+      horizon_trading_days: 10
+      offsets: 10
+      cost_scenarios_round_trip_bps: [30, 60]
+      metrics: [Sharpe, MDD, volatility, sector_concentration, turnover, CAGR]
+      requirements:
+        - "동일한 유니버스·기간·가격·거래비용 전제 사용"
+        - "훈련 구간에서 조정한 파라미터를 평가 구간에 그대로 적용"
+        - "10개 오프셋 결과는 서로 독립 표본으로 간주하지 않음"
+        - "리포트가 추가한 성과와 단순 집중도 완화 효과를 분리 비교"
+    refs: [LOG-020, LOG-021]
+  explanation_hypothesis:
+    statement: "근거 추적형 설명이 사용자의 종목 선정·비중 결정 이유 파악에 도움이 되는가"
+    tasks: ["선정 이유 식별", "비중 제한 원인 확인", "원문 출처 추적", "전망과 사실 구별"]
+    refs: [LOG-005, LOG-022]
 
-# ─────────────────────────────────────────────
-# 8. 기각·축소한 가설
-# ─────────────────────────────────────────────
-rejected_hypotheses:
-  - hypothesis: "금융정책·공공지원 탐색에서 헛걸음·중도포기가 잦다"
-    result: "헛걸음 0/10 (Q19), 중도포기 0/10 (Q24) — 스코프 제외"
-  - hypothesis: "사용자는 자산관리 정보에 돈을 낼 의사가 있다"
-    result: "지불 경험 0/10 (SUR-08) — 수익모델 제외, 무료 전제 (ASM-05)"
-  - hypothesis: "사용자는 금융앱 추천을 불신해서 따르지 않는다"
-    result: "축소 — 실행 0/10이지만 이유 대부분이 '본 적 없음'·'시드 부족', 불신은 1명 (SUR-07)"
-
-# ─────────────────────────────────────────────
-# 9. 한계
-# ─────────────────────────────────────────────
-limitations:
-  - "표본 n=10, 단답형 설문 — 심층 인터뷰 미실시. 빈도 수치는 방향성 지표로만 사용한다."
-  - "분기 문항 오염: 비대상자가 분기 문항에 응답한 사례(R9의 Q5)를 근거에서 제외했다."
-  - "Q9 질문문 예시('그냥 샀다')가 응답을 유도했을 가능성이 있다."
-  - "대상층의 실제 손실 사례는 아직 없다 (SUR-05는 대상 제외 유형)."
-  - "지불의사는 확인되지 않았으며(SUR-08), 무료 서비스 전제(ASM-05)로 흡수한다."
+scope_and_limitations:
+  in_scope:
+    - "국내 대형주 리포트의 과거 시점 수집과 단기 신호 구조화"
+    - "STABLE 생성 경로와 리포트 정보의 결합 실험"
+    - "위험 제약 최적화, 설명 생성, 검증 차단"
+    - "오프셋 통합 백테스트와 시점 누출 검사"
+  out_of_scope:
+    - "실제 증권사 주문 자동 실행"
+    - "투자 수익 보장"
+    - "개인별 적합성·위험성향을 반영한 맞춤 자문"
+    - "무허가 리포트 원문 재배포"
+  limitations:
+    - "설문 표본 n=10, 단답형 중심이며 사용자 전체에 일반화할 수 없음."
+    - "R9의 Q5는 설문 분기 오류로 제외하고 Q11~Q12만 참조."
+    - "외부 리포트의 1년치 확보 여부와 실제 이용 가능 시각·이용권한을 확인해야 함."
+    - "단기 신호 변환, diffusion 융합 신뢰도, 최적화 계수는 아직 검증하지 않음."
+    - "리포트와 diffusion이 같은 정보를 반영할 수 있으므로 독립성 가정은 검증 대상."
+    - "생성 시나리오 수가 많다고 실제 시장 예측 오차가 작아지는 것은 아님."
+    - "설명 근거의 사실성 검증은 투자 성과 및 미래 전망의 정답 여부를 보장하지 않음."
+    - "라이선스·저작권 및 서비스 유형별 금융 규제 검토가 필요함."
