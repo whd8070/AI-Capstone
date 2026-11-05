@@ -1,0 +1,115 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "target_price",
+    "horizon",
+    "horizon_stated",
+    "earnings_forecast",
+    "rationale",
+    "risks"
+  ],
+  "properties": {
+    "target_price": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "horizon": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "horizon_stated": {
+      "type": "boolean"
+    },
+    "earnings_forecast": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "period",
+          "metric",
+          "value",
+          "unit"
+        ],
+        "properties": {
+          "period": {
+            "type": "string"
+          },
+          "metric": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "rationale": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "claim",
+          "category",
+          "quote",
+          "page"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "실적",
+              "업황",
+              "제품·사업",
+              "밸류에이션",
+              "주주환원",
+              "기타"
+            ]
+          },
+          "quote": {
+            "type": "string"
+          },
+          "page": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "claim",
+          "quote",
+          "page"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string"
+          },
+          "quote": {
+            "type": "string"
+          },
+          "page": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,3 @@
+requests
+pymupdf
+# anthropic   # --backend api 를 쓸 때만
