@@ -15,3 +15,11 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Diffusion: keep reproducible scenario cache, exclude regenerable outputs
+src/diffusion/data/kr/cache_prices/
+src/diffusion/data/kr/live_cache/
+src/diffusion/results/kr_pair_cpu/backtests/
+src/diffusion/results/kr_pair_cpu/signals/
+src/diffusion/.ipynb_checkpoints/
+src/diffusion/.pytest_cache/
