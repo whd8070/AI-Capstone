@@ -218,6 +218,16 @@ with portfolio:
         st.dataframe(pd.DataFrame(view),hide_index=True,use_container_width=True)
         st.caption('O 모델이 생성한 20영업일 시나리오의 경험적 통계입니다. 확률 보정·수익 예측력을 검증한 투자 전망은 아닙니다.')
         st.subheader('투자비중 변화 근거 및 모델 시나리오 해석')
+        with st.expander('검증 가능한 횡단면 점수·경쟁 종목 추월 근거', expanded=False):
+            evidence = pd.DataFrame(r.get('analysis_facts', {}).get('rank_evidence', []))
+            if not evidence.empty:
+                keys = ['company', 'rank_before', 'rank_after', 'base_rank_score',
+                        'report_rank_score', 'final_rank_score', 'passed_peers_count',
+                        'passed_by_peers_count', 'report_available']
+                st.dataframe(evidence[keys], hide_index=True, use_container_width=True)
+                st.caption('추월 건수는 REPORT 반영 전후 두 종목의 상대 점수 순서가 '
+                           '엄격히 역전된 건수입니다. 동점은 추월로 계산하지 않으며 '
+                           '최종 비중의 원인 분해를 의미하지 않습니다.')
         st.markdown(r['explanation'])
         st.download_button('설명 TXT',data=r['explanation'].encode('utf-8'),
                            file_name=f'explanation_{r["buy_date"]}.txt')
@@ -383,4 +393,10 @@ with refresh_tab:
             st.warning(latest_port['agent_warning'])
         with st.expander('투자비중 변화 및 위험 설명'):
             st.caption('해설 생성: '+display_agent(latest_port.get('agent_used', 'local')))
+            evidence = pd.DataFrame(latest_port.get('analysis_facts', {}).get('rank_evidence', []))
+            if not evidence.empty:
+                st.dataframe(evidence[['company', 'rank_before', 'rank_after',
+                                       'passed_peers_count', 'passed_by_peers_count',
+                                       'report_available']],
+                             hide_index=True, use_container_width=True)
             st.markdown(latest_port['explanation'])
