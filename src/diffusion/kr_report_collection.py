@@ -17,6 +17,28 @@ from collections import deque
 from pathlib import Path
 
 
+def load_codex_backend():
+    """Load the repository's Codex adapter without requiring Jupyter or an API SDK."""
+    import importlib.util
+    path = Path(__file__).resolve().parents[2] / 'agents' / 'collection' / 'pipeline' / 'codex_backend.py'
+    if not path.is_file():
+        raise FileNotFoundError(f'Codex backend not found: {path}')
+    spec = importlib.util.spec_from_file_location('kr_local_codex_backend', path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError('Codex backend failed to initialize')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def codex_status(*, timeout=12):
+    try:
+        return load_codex_backend().codex_status(timeout=timeout)
+    except (OSError, RuntimeError) as exc:
+        return {'ready': False, 'state': 'check_failed',
+                'message': f'Codex 확인 실패: {exc}'}
+
+
 def claude_executable():
     """Locate a standalone Claude CLI even if the Streamlit server has a stale PATH.
 
