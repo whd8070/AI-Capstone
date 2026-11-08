@@ -32,7 +32,7 @@ python -m pip install -r requirements_kr_report_web.txt
 python -m streamlit run kr_report_web.py --server.address 127.0.0.1 --server.port 8501
 ```
 
-브라우저에서 **http://127.0.0.1:8501**로 접속합니다. 종료는 `Ctrl+C`입니다. 웹만 사용한다면 `JupyterLab`, `ipykernel`, `nbformat`, `matplotlib`을 설치하지 않습니다. 신규 리포트 다운로드·추출 화면은 Python의 `requests`·`pymupdf`를 사용하며, **Claude 설명·추출을 선택할 경우에만** 별도 Claude CLI가 필요합니다. 기존 Diffusion 노트북은 선택 사항이므로 해당 [별도 안내](README_KR_PAIR_CPU.md)를 따르세요.
+브라우저에서 **http://127.0.0.1:8501**로 접속합니다. 종료는 `Ctrl+C`입니다. 웹만 사용한다면 `JupyterLab`, `ipykernel`, `nbformat`, `matplotlib`을 설치하지 않습니다. 신규 리포트 다운로드·추출 화면은 Python의 `requests`·`pymupdf`를 사용하며, **Codex 설명·추출을 선택할 경우에만** 별도 Codex CLI가 필요합니다. 기존 Diffusion 노트북은 선택 사항이므로 해당 [별도 안내](README_KR_PAIR_CPU.md)를 따르세요.
 
 ## 2. 두 가지 핵심 기능
 
@@ -57,20 +57,16 @@ final = (1 - r) × base + r × rank_z(REPORT 목표가 괴리율)
 - 최신 날짜 시장 데이터는 `yfinance` 및 FRED에서 수집합니다. 수정 종가(모델/평가)와 비수정 종가(목표가 괴리율), 조정 시가(체결)를 구분합니다.
 - 보고서 발행 시각이 없는 한계 때문에, 당일 보고서를 사용하지 않는 보수적인 정렬을 적용합니다.
 
-### 신규 리포트 수집 절차 (선택)
+### 신규 리포트 수집 → Codex 추출 → 포트폴리오 (선택)
 
-1. **인증 상태 확인:** 웹의 「리포트 신규 수집」 탭에서 Claude Code CLI가 설치·로그인됐는지 읽기 전용으로 검사합니다. 로그인은 별도 터미널에서 `claude auth login`, 확인은 `claude auth status`입니다. 웹 화면에 비밀번호, 인증코드, 토큰을 입력하지 않습니다.
-2. **범위·상태 미리보기:** 마감일을 선택하면 기본 리포트 기간과 90일 규칙에 따른 수집 범위, 이미 받은 PDF 및 추출 대기 건수를 표시합니다. 신규로 발견될 건수는 실제 네이버 조회 전에는 알 수 없습니다.
-3. **PDF만 다운로드:** Claude 계정이 없어도 네이버 PDF를 로컬 캐시에 수집할 수 있습니다. 이 단계만으로 컨센서스 데이터는 변경되지 않습니다.
-4. **PDF + Claude 구조화 + 컨센서스 반영:** 로그인 확인 후 명시적으로 실행합니다. 처리 단계를 화면에 표시하며 수집·추출이 끝난 리포트는 다음 실행 시 재사용합니다. 구조화 대기 건이 남으면 **오버레이 게시를 중단**합니다.
+1. **로컬 Codex 연결:** 웹의 「리포트 신규 수집」 탭이 Codex CLI와 로그인 상태를 검사합니다. 설치된 VS Code Codex 확장을 찾을 수 있지만, VS Code의 세션 공유가 항상 보장되는 것은 아니므로 `codex login status` 결과를 우선합니다.
+2. **선택적 설치:** Codex CLI가 없다면 Node.js 설치 후 `npm install -g @openai/codex` 실행. 이후 로컬 터미널에서 `codex login` 및 `codex login status`를 사용하세요. 웹은 비밀번호·토큰을 입력받지 않습니다. 기본 웹 설치에는 Node.js가 필요하지 않습니다.
+3. **PDF 수집:** 네이버 PDF 및 메타데이터를 다운로드합니다. Claude/Codex 연결 없이 PDF만 수집하는 것도 가능합니다.
+4. **Codex 구조화:** 연결된 Codex CLI가 격리된 임시 폴더의 **읽기 전용 sandbox**에서 원문 텍스트로 JSON 스키마 구조화를 수행합니다. 원문 인용/페이지·목표가·기간을 기존 추출기와 동일하게 검증합니다. 사용량과 PDF 수집 실패는 숨기지 않고 표시합니다.
+5. **컨센서스 게시:** 수집 구간에서 구조화하지 못한 리포트가 있으면 결과를 부분 완료로 간주하고 **컨센서스 오버레이를 갱신하지 않습니다.** 완료 결과는 캐시에 보존됩니다.
+6. **포트폴리오 자동 연결:** 선택하면 **매수일이 수집 마감일보다 뒤인지** 검사한 후, 매수일 직전 거래일 종가로 MOM+PAIR 신호·REPORT 전망을 계산하고 BL/CVaR 위험 최적화의 비중과 설명을 저장합니다. **매수일 당일·그 이후의 보고서는 사용하지 않습니다.**
 
-Windows CLI 설치 예시는 PowerShell에서 `irm https://claude.ai/install.ps1 | iex`, macOS는 `curl -fsSL https://claude.ai/install.sh | bash`입니다. 공식 설치 설명을 확인한 뒤 명령을 실행하세요. [Claude Code CLI 공식 설명](https://code.claude.com/docs/en/cli-reference).
-
-**설치 + PATH 설정을 자동화하려면** Windows PowerShell에서 `.\setup_claude_windows.ps1`, macOS에서 `bash ./setup_claude_mac.sh`를 실행하세요. 설치하지 않은 경우에만 Claude 공식 설치 프로그램을 호출하고, `~/.local/bin`을 사용자 PATH(Windows) 또는 셸 프로필(macOS)에 중복 없이 추가합니다. 이후 **새 터미널에서** `claude auth login`, `claude auth status`를 실행합니다. 웹은 표준 실행 파일 경로를 직접 탐색하고 리포트 추출 프로세스에도 보정된 PATH를 전달합니다. 인증 정보는 읽거나 저장하지 않습니다.
-
-PowerShell 스크립트 실행 정책으로 차단될 때는 설치 스크립트의 내용을 확인한 뒤 공식 설치 명령을 직접 실행하고, 위 내용을 따라 PATH를 설정하세요.
-
-**비용 관련 주의:** 웹의 USD 한도는 CLI 파이프라인이 보고한 API 환산비용 기준 중단값입니다. 실제 청구액을 한도 내로 보장하거나 Claude 구독 사용량을 제한하는 금액은 아닙니다. Claude 로그인이 없어도 기존 데이터 기반 백테스트와 로컬 설명은 사용할 수 있습니다.
+코덱스 설치는 **리포트 추가 수집/추출 및 AI 설명을 사용하는 사용자만** 필요합니다. Codex CLI의 JSON Schema 출력, 비대화형 `exec`, 읽기 전용 옵션을 사용합니다. 로그인한 계정의 사용량 제한을 따르며, 웹의 USD 환산 비용 값은 실제 과금액을 제한하는 보장이 아닙니다.
 
 ## 4. 결과·캐시 및 재실행
 
@@ -102,7 +98,7 @@ python -m unittest test_kr_pair_cpu test_kr_report_engine test_kr_report_status 
 - 시세 다운로드 실패: Yahoo/FRED 연결 및 거래일 시세 제공 여부를 확인하세요. 결측치는 임의의 가격으로 대체하지 않습니다.
 - `use_container_width` 경고: Streamlit API의 폐기 경고이며 기능 실패를 의미하지 않습니다.
 - **Windows 수집 로그에서 `�` 글자가 보임:** 자식 Python 수집 프로세스의 CP949/UTF-8 출력 인코딩 불일치였습니다. 최신 `kr_report_collection.py`는 `PYTHONIOENCODING=utf-8` 및 `PYTHONUTF8=1`을 강제합니다. 기존 깨진 화면 출력은 복원되지 않으므로 새 코드를 받은 뒤 Streamlit을 재시작해 다음 수집부터 확인하세요. 이전에 받은 PDF/메타데이터 캐시는 유지됩니다.
-- 선택적 설명 에이전트: 로컬 기본 설명은 추가 비용이 없지만, `Claude` 모드/신규 PDF 구조화에는 Claude CLI 로그인·설정·사용량이 필요합니다.
+- 선택적 설명 에이전트: 로컬 기본 설명은 추가 비용이 없지만, `Claude` 모드/신규 PDF 구조화에는 Codex CLI 로그인·설정·사용량이 필요합니다.
 
 ## 6. 제한
 
