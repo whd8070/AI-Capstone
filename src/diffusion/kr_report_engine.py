@@ -520,7 +520,7 @@ def portfolio_for_buy_date(project, buy_date, *, pair_share=.5, report_share=.5,
     return result
 
 
-def refresh_collection_to(project, decision_date, *, limit=30, max_cost=2.0, download_only=False, progress=None, backend='codex'):
+def refresh_collection_to(project, decision_date, *, limit=30, max_cost=2.0, max_tokens=250000, download_only=False, progress=None, backend='codex'):
     """Explicit opt-in: scrape ONLY dates not covered by existing handoff; extract at most limit.
 
     No new data is manufactured if services or Codex CLI are unavailable. The original
@@ -538,8 +538,8 @@ def refresh_collection_to(project, decision_date, *, limit=30, max_cost=2.0, dow
         return '기존 컨센서스가 이미 해당 날짜까지 있습니다. 신규 수집 생략.'
     if end.date() > dt.datetime.now().date():
         raise ValueError('Cannot fetch future reports')
-    if limit < 1 or max_cost <= 0:
-        raise ValueError('Report extraction limit and max cost must be positive')
+    if limit < 1 or max_cost <= 0 or max_tokens < 1:
+        raise ValueError('Report extraction limit and budgets must be positive')
     from kr_pair_bootstrap import TRAINED_TICKERS
     codes = ','.join(TRAINED_TICKERS)
     start_s, end_s = str(start.date()), str(end.date())
@@ -560,11 +560,14 @@ def refresh_collection_to(project, decision_date, *, limit=30, max_cost=2.0, dow
                 'Codex 로그인 후 전체 처리 기능을 실행하면 이미 받은 PDF는 재사용됩니다. '
                 + fetch_log[-250:])
     if progress:
-        progress('리포트 구조화', f'백엔드={backend}; 신규 리포트 최대 {limit}건, 토큰/비용 제한은 보조 기준')
-    extract_log = run_stage([sys.executable, '-u', '-m', 'pipeline.run', '--backend', backend, '--stock', codes,
-                             '--since', start_s, '--until', end_s, '--limit', str(limit),
-                             '--max-cost', str(max_cost), '--yes'], cwd=collection,
-                            stage='리포트 구조화', callback=progress)
+        progress('리포트 구조화', f'백엔드={backend}; 최대 {limit}건; 토큰 한도 {max_tokens:,} (완료된 건 합산)')
+    extract_cmd = [sys.executable, '-u', '-m', 'pipeline.run', '--backend', backend, '--stock', codes,
+                   '--since', start_s, '--until', end_s, '--limit', str(limit), '--yes']
+    if backend == 'codex':
+        extract_cmd += ['--max-tokens', str(max_tokens)]
+    else:
+        extract_cmd += ['--max-cost', str(max_cost)]
+    extract_log = run_stage(extract_cmd, cwd=collection, stage='리포트 구조화', callback=progress)
     if progress:
         progress('검증 및 컨센서스', '누락된 구조화 건수 및 리포트 시점 검사 중')
     # Do not promote a partial report snapshot into a seemingly complete consensus.
