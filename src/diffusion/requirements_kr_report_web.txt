@@ -1,8 +1,14 @@
-# 단일 설치: Diffusion CPU 인퍼런스/백테스트 + REPORT 웹 + 리포트 수집
--r requirements_kr_pair_cpu.txt
--r ../../agents/collection/requirements.txt
+# Streamlit 웹 + 동결 STABLE 추론 + REPORT 수집에 필요한 Python 패키지만 설치
+numpy
+pandas
+scipy
+scikit-learn
+torch
+yfinance
+pandas_datareader
 streamlit>=1.39,<2
 psutil>=5.9
-# VS Code / Jupyter Notebook 실행 및 .venv 커널 등록
-ipykernel>=6.29
-jupyterlab>=4,<5
+# 웹에서 '신규 리포트 수집'을 선택할 때 사용
+requests
+pymupdf
+# JupyterLab / ipykernel / nbformat / matplotlib 및 Claude CLI는 기본 설치 대상이 아님
