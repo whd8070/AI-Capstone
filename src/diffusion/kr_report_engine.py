@@ -438,9 +438,13 @@ def claude_explanation(signal_result, report_records, *, timeout=180):
               "단순한 예측·조언이 아닌 시점에 맞춘 사후 설명이다.\n\n<DOCUMENT_JSON>\n"
               + json.dumps(facts, ensure_ascii=False, default=_jsonable, allow_nan=False)
               + "\n</DOCUMENT_JSON>")
-    r = subprocess.run(['claude', '-p', '--tools', '', '--output-format', 'text'],
+    from kr_report_collection import claude_executable, claude_env
+    exe = claude_executable()
+    if not exe:
+        raise RuntimeError('Claude CLI를 찾지 못했습니다. 신규 수집 탭의 PATH 설정 안내를 확인하세요.')
+    r = subprocess.run([exe, '-p', '--tools', '', '--output-format', 'text'],
                        input=prompt, text=True, capture_output=True, timeout=timeout,
-                       check=False)
+                       env=claude_env(), check=False)
     if r.returncode != 0:
         raise RuntimeError(f'Claude CLI unavailable: {r.stderr[-2000:]}')
     if not r.stdout.strip():
