@@ -48,6 +48,19 @@ python -m streamlit run kr_report_web.py --server.address 127.0.0.1 --server.por
 - **선택적 외부 도구:** Claude 기반 설명/새 리포트 추출을 사용할 때만 별도 **Claude CLI 설치·인증**이 필요합니다. 기본 로컬 설명과 기존 리포트 사용에는 필요하지 않습니다.
 - **제약:** macOS는 설치 안내를 제공하지만 전체 백테스트 실기기 검증은 아직 별도 확인이 필요합니다. 웹은 자동 매매를 하지 않는 연구용 프로토타입입니다.
 
+### 신규 리포트 수집과 Claude 로그인 (선택)
+
+웹의 **리포트 신규 수집** 탭에서 Claude CLI 로그인 상태를 확인할 수 있습니다. 이미 저장된 컨센서스만 사용할 때는 로그인할 필요가 없습니다. 네이버 PDF만 다운로드하는 기능도 로그인 없이 이용할 수 있습니다.
+
+리포트 본문의 근거·리스크를 추출하려면 Claude Code CLI를 별도로 설치하고, **로컬 터미널에서** 아래 명령으로 로그인하세요. 로그인 후 웹 서버를 다시 시작하고 **인증 상태 다시 확인**을 누릅니다. 웹에 계정 비밀번호나 API 키를 입력하지 않습니다.
+
+```bash
+claude auth login
+claude auth status
+```
+
+수집 화면에는 날짜별 대상 범위, 다운로드·구조화 완료 건수, 남은 대기 건수와 처리 단계 로그가 표시됩니다. 추출 상한 또는 사용량 때문에 일부 보고서가 남으면 **불완전한 컨센서스로 게시하지 않습니다.** CLI 설치: [Claude Code 공식 문서](https://code.claude.com/docs/en/overview).
+
 더 보기: [웹 상세 사용법·선택적 테스트](src/diffusion/README_KR_REPORT_WEB.md) · [기존 Jupyter MOM+PAIR 별도 실행](src/diffusion/README_KR_PAIR_CPU.md).
 
 ---

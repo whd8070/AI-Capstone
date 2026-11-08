@@ -497,7 +497,7 @@ def portfolio_for_buy_date(project, buy_date, *, pair_share=.5, report_share=.5,
     return result
 
 
-def refresh_collection_to(project, decision_date, *, limit=30, max_cost=2.0):
+def refresh_collection_to(project, decision_date, *, limit=30, max_cost=2.0, download_only=False, progress=None):
     """Explicit opt-in: scrape ONLY dates not covered by existing handoff; extract at most limit.
 
     No new data is manufactured if services or Claude CLI are unavailable. The original
@@ -520,17 +520,28 @@ def refresh_collection_to(project, decision_date, *, limit=30, max_cost=2.0):
     from kr_pair_bootstrap import TRAINED_TICKERS
     codes = ','.join(TRAINED_TICKERS)
     start_s, end_s = str(start.date()), str(end.date())
-    def run(argv):
-        res = subprocess.run(argv, cwd=collection, text=True, capture_output=True,
-                             timeout=7200, check=False)
-        if res.returncode:
-            raise RuntimeError(' '.join(argv)+' failed:\n'+res.stdout[-2000:]+'\n'+res.stderr[-2000:])
-        return res.stdout[-1000:]
-    fetch_log = run([sys.executable, 'naver_pdf_fetcher.py', '--universe', '--only',codes,
-                     '--since',start_s,'--until',end_s])
-    extract_log = run([sys.executable, '-m', 'pipeline.run', '--stock',codes,
-                       '--since',start_s,'--until',end_s, '--limit',str(limit),
-                       '--max-cost',str(max_cost), '--yes'])
+    from kr_report_collection import claude_status, run_stage
+    if not download_only:
+        state = claude_status()
+        if not state['ready']:
+            raise RuntimeError(state['message'] + ' (PDF만 수집하는 옵션은 로그인 없이 이용 가능)')
+    if progress:
+        progress('PDF 다운로드', f'네이버 증권 리포트 확인: {start_s} ~ {end_s}')
+    fetch_log = run_stage([sys.executable, '-u', 'naver_pdf_fetcher.py', '--universe', '--only', codes,
+                           '--since', start_s, '--until', end_s], cwd=collection,
+                          stage='PDF 다운로드', callback=progress)
+    if download_only:
+        return ('PDF 다운로드·캐시 확인 완료. 구조화 및 컨센서스 갱신은 수행하지 않았습니다. '
+                'Claude 로그인 후 전체 처리 기능을 실행하면 이미 받은 PDF는 재사용됩니다. '
+                + fetch_log[-250:])
+    if progress:
+        progress('Claude 구조화', f'신규 리포트 최대 {limit}건, API 환산비용 최대 ${max_cost:.2f}')
+    extract_log = run_stage([sys.executable, '-u', '-m', 'pipeline.run', '--stock', codes,
+                             '--since', start_s, '--until', end_s, '--limit', str(limit),
+                             '--max-cost', str(max_cost), '--yes'], cwd=collection,
+                            stage='Claude 구조화', callback=progress)
+    if progress:
+        progress('검증 및 컨센서스', '누락된 구조화 건수 및 리포트 시점 검사 중')
     # Do not promote a partial report snapshot into a seemingly complete consensus.
     manifest_path = collection/'data'/'manifest.csv'
     original_reports = collection/'data'/'out'/'reports.jsonl'

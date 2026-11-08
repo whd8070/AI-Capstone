@@ -197,20 +197,94 @@ with portfolio:
             st.json(r['compact'],expanded=False)
 
 with refresh_tab:
-    st.subheader('원본 리포트 신규 수집 · 필요한 부분만 LLM 추출')
-    st.warning('별도 선택 기능입니다. 네이버 PDF 다운로드와 Claude Code CLI 추출은 네트워크/로그인이 필요하며 '
-               '시간·사용량이 발생할 수 있습니다. 원본 Git 추적 handoff 파일은 수정하지 않습니다.')
-    until = st.date_input('리포트 수집 마감일 (매수 전 신호일)',
-                          value=min(dt.date.today(),last.date()+dt.timedelta(days=1)),
-                          max_value=dt.date.today(),key='refresh_date')
-    limit = st.number_input('이번 실행 신규 추출 상한 (건)', min_value=1,max_value=100,value=20)
-    cost = st.number_input('신규 추출 API 환산비용 상한 (USD)',min_value=0.1,max_value=100.,value=2.,step=.1)
-    confirm = st.checkbox('대상 범위 및 LLM 사용량을 확인했습니다')
-    if st.button('신규 리포트만 수집·구조화', disabled=not confirm):
-        with st.spinner('선택 날짜 범위의 신규 보고서를 수집/추출하고 있습니다.'):
+    from kr_report_collection import claude_status, collection_plan
+
+    st.subheader('신규 증권사 리포트 수집')
+    if st.session_state.get('collection_notice'):
+        st.success(st.session_state.pop('collection_notice'))
+    st.caption('① Claude 로그인 상태 확인 → ② 대상 날짜와 대기 건수 확인 → '
+               '③ 네이버 PDF만 받거나 Claude 추출 후 로컬 컨센서스에 반영')
+    st.info('이미 저장된 리포트로 백테스트·포트폴리오를 만들 때는 Claude 로그인이 필요하지 않습니다. '
+            '새 PDF에서 리포트 근거를 자동 추출할 때만 Claude Code CLI를 사용합니다.')
+
+    @st.cache_data(ttl=60, show_spinner=False)
+    def get_claude_status():
+        return claude_status()
+
+    left, right = st.columns([3, 1])
+    with right:
+        if st.button('인증 상태 다시 확인', key='claude_recheck'):
+            get_claude_status.clear()
+    auth = get_claude_status()
+    if auth['ready']:
+        left.success('Claude CLI 준비됨 · 로그인 확인')
+    else:
+        left.warning(auth['message'])
+        with st.expander('Claude 설치·로그인 방법', expanded=True):
+            st.markdown('인증은 **로컬 터미널**에서 진행합니다. 웹은 비밀번호·인증코드·API 키를 받거나 저장하지 않습니다. '
+                        '설치/로그인 후 **Streamlit 서버를 재시작**하고 상태를 다시 확인하세요.')
+            st.markdown('**Windows PowerShell — 최초 설치:**')
+            st.code('irm https://claude.ai/install.ps1 | iex', language='powershell')
+            st.markdown('**macOS 터미널 — 최초 설치:**')
+            st.code('curl -fsSL https://claude.ai/install.sh | bash', language='bash')
+            st.markdown('**공통 로그인·확인:**')
+            st.code('claude auth login\nclaude auth status', language='bash')
+            st.markdown('설치 경로가 인식되지 않으면 터미널/웹 서버를 다시 실행하고 PATH를 확인하세요. '
+                        'Claude 구독 또는 사용량 과금 설정이 필요할 수 있습니다.')
+
+    st.divider()
+    until = st.date_input('리포트 수집 마감일 (이 날짜까지 공개분)',
+                          value=min(dt.date.today(), last.date() + dt.timedelta(days=1)),
+                          max_value=dt.date.today(), key='refresh_date')
+    try:
+        plan = collection_plan(PROJECT, until)
+    except Exception as exc:
+        st.error(f'수집 범위를 분석하지 못했습니다: {exc}')
+        plan = None
+    if plan:
+        if plan['can_fetch']:
+            st.write(f"**수집 대상:** {plan['start']} ~ {plan['end']} · 고정 유니버스 44종목")
+            c1, c2, c3 = st.columns(3)
+            c1.metric('이미 다운로드한 PDF (해당 기간)', f"{plan['already_downloaded']}건")
+            c2.metric('이미 구조화한 리포트', f"{plan['already_extracted']}건")
+            c3.metric('구조화 대기', f"{plan['pending_extraction']}건")
+            st.caption(plan['note'] + ' 기존 Git 추적 handoff 파일은 변경하지 않고 로컬 오버레이에만 반영합니다.')
+        else:
+            st.info('기본 컨센서스에 이 날짜까지의 정보가 있어 수집할 새로운 기간이 없습니다.')
+
+    mode = st.radio('실행 범위', ['PDF만 다운로드 (로그인 불필요)', 'PDF 다운로드 + Claude 추출 + 컨센서스 반영'],
+                    key='collection_mode')
+    extract = mode.startswith('PDF 다운로드 +')
+    if extract:
+        limit = st.number_input('이번 실행 신규 추출 상한 (건)', min_value=1, max_value=300, value=30)
+        cost = st.number_input('CLI가 보고하는 API 환산비용 상한 (USD)',
+                               min_value=0.1, max_value=100., value=2., step=0.5)
+        st.caption('이는 CLI 추출 파이프라인의 **누적 환산비용 중단 기준**으로, '
+                   '실제 결제액·구독 한도를 보장하는 금액 제한은 아닙니다. '
+                   '한도 도달로 구조화되지 않은 보고서가 남으면 컨센서스 반영을 중단하고 재실행할 수 있습니다.')
+    else:
+        limit, cost = 1, 1.0
+        st.caption('이 단계에서는 네이버에서 PDF와 메타데이터를 수집하기만 합니다. '
+                   '추출 및 백테스트용 컨센서스 반영은 하지 않습니다.')
+    confirm = st.checkbox('날짜 범위와 외부 요청·사용량을 확인했습니다', key='refresh_confirm')
+    allowed = bool(plan and plan['can_fetch'] and confirm and (not extract or auth['ready']))
+    if st.button('선택한 방식으로 수집 시작', disabled=not allowed, type='primary', key='refresh_run'):
+        with st.status('리포트 수집을 실행하는 중입니다', expanded=True) as status_box:
+            event_log = st.empty()
+            latest_lines = []
+            def progress(stage, message):
+                latest_lines.append(f'[{stage}] {message}')
+                event_log.code('\n'.join(latest_lines[-18:]), language='text')
             try:
-                msg=eng.refresh_collection_to(PROJECT,until,limit=int(limit),max_cost=float(cost))
-                st.success(msg)
+                msg = eng.refresh_collection_to(PROJECT, until, limit=int(limit), max_cost=float(cost),
+                                                 download_only=not extract, progress=progress)
+                status_box.update(label='리포트 처리 완료', state='complete', expanded=False)
+                st.session_state['collection_notice'] = msg
+                get_claude_status.clear()
                 st.rerun()
             except Exception as exc:
-                st.exception(exc)
+                status_box.update(label='수집 또는 구조화 실패', state='error', expanded=True)
+                st.error(str(exc))
+                st.caption('중간에 받은 PDF/구조화 결과는 로컬에 남습니다. '
+                           '실패 원인을 해결한 뒤 동일 조건으로 실행하면 완료된 리포트는 건너뜁니다. '
+                           '구조화가 미완료인 기간은 컨센서스에 반영되지 않습니다.')
