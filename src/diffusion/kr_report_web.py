@@ -259,11 +259,12 @@ with refresh_tab:
     extract = mode.startswith('PDF 다운로드 +')
     if extract:
         limit = st.number_input('이번 실행 구조화 최대 건수', min_value=1, max_value=300, value=30)
-        st.caption('Codex는 현재 로그인된 계정 사용량을 소비합니다. '
-                   '아래 비용 상한은 CLI에서 보고하는 환산량 기반의 보조 중단 기준으로, '
-                   'Codex 계정 사용량·실제 과금을 보장하거나 제한하지 않습니다.')
-        cost = st.number_input('기존 파이프라인 환산비용 상한(참고값, USD)',
-                               min_value=.1, max_value=100., value=2., step=.5)
+        st.caption('Codex는 현재 로그인된 계정의 사용량을 소비합니다. '
+                   '토큰 상한은 **완료된 리포트의 누적 토큰을 확인해 다음 리포트 시작을 중단**하는 기준입니다. '
+                   '한 번의 호출·실제 과금/사용량에 대한 하드 캡은 아닙니다.')
+        max_tokens = st.number_input('이번 실행 누적 토큰 상한 (완료 건 기준)',
+                                     min_value=10000, max_value=2000000, value=250000, step=10000)
+        cost = 2.0
         auto_portfolio = st.checkbox('구조화 완료 후 해당 매수일 포트폴리오까지 계산',
                                      key='codex_auto_portfolio', value=False)
         buy_for_refresh = None
@@ -275,7 +276,7 @@ with refresh_tab:
             st.caption('매수일 전 거래일 종가를 기준으로 신호를 생성합니다. '
                        '매수일 당일 리포트는 사용하지 않으며, 이전 리포트만 적용합니다.')
     else:
-        limit, cost, auto_portfolio, buy_for_refresh = 1, 1.0, False, None
+        limit, cost, max_tokens, auto_portfolio, buy_for_refresh = 1, 1.0, 250000, False, None
         st.caption('이 단계는 원본 PDF·메타데이터를 수집합니다. '
                    '추출과 컨센서스 및 포트폴리오 갱신은 하지 않습니다.')
 
@@ -296,7 +297,8 @@ with refresh_tab:
             try:
                 msg = eng.refresh_collection_to(
                     PROJECT, until, limit=int(limit), max_cost=float(cost),
-                    download_only=not extract, progress=progress, backend='codex')
+                    max_tokens=int(max_tokens), download_only=not extract,
+                    progress=progress, backend='codex')
                 if extract and auto_portfolio:
                     progress('포트폴리오', '시점별 데이터 갱신 · PAIR 추론 · REPORT 결합')
                     new_result = eng.portfolio_for_buy_date(
