@@ -61,6 +61,8 @@ claude auth status
 
 수집 화면에는 날짜별 대상 범위, 다운로드·구조화 완료 건수, 남은 대기 건수와 처리 단계 로그가 표시됩니다. 추출 상한 또는 사용량 때문에 일부 보고서가 남으면 **불완전한 컨센서스로 게시하지 않습니다.** CLI 설치: [Claude Code 공식 문서](https://code.claude.com/docs/en/overview).
 
+**Claude 설치·PATH 자동 설정(선택):** Windows에서는 `src/diffusion`에서 `.\setup_claude_windows.ps1`, macOS에서는 `bash ./setup_claude_mac.sh`를 실행하세요. 공식 설치 프로그램을 호출하고 사용자 PATH에 `~/.local/bin`을 중복 없이 등록합니다. 설치 이후 **별도 터미널에서** `claude auth login`으로 로그인합니다. 웹은 CLI의 표준 설치 경로도 직접 탐지하므로, 기존 Streamlit 프로세스의 PATH가 오래됐어도 실행 파일을 찾을 수 있습니다. 웹 자체의 최초 설치에는 Claude가 필요하지 않습니다.
+
 더 보기: [웹 상세 사용법·선택적 테스트](src/diffusion/README_KR_REPORT_WEB.md) · [기존 Jupyter MOM+PAIR 별도 실행](src/diffusion/README_KR_PAIR_CPU.md).
 
 ---
