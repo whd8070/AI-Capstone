@@ -452,6 +452,25 @@ def claude_explanation(signal_result, report_records, *, timeout=180):
     return r.stdout.strip()
 
 
+def codex_explanation(signal_result, report_records):
+    """Codex explains already calculated weights; it never generates allocations."""
+    from kr_report_collection import load_codex_backend
+    facts = dict(
+        decision_date=signal_result['decision_date'],
+        buy_date=signal_result['buy_date'],
+        pair_share=signal_result['pair_share'],
+        report_share=signal_result['report_share'],
+        report_coverage=signal_result['report_coverage'],
+        scenario_before=signal_result['scenario_before'],
+        scenario_after=signal_result['scenario_after'],
+        comparison=sorted(signal_result['comparison'],
+                          key=lambda x: abs(x['weight_change']), reverse=True)[:12],
+        reports=report_records[:35]
+    )
+    return load_codex_backend().codex_explanation(facts)
+
+
+
 def portfolio_for_buy_date(project, buy_date, *, pair_share=.5, report_share=.5,
                            K=128, seed=0, batch=128, threads=4, fetch=True, force=False,
                            require_repair=False, agent='local'):
@@ -482,13 +501,13 @@ def portfolio_for_buy_date(project, buy_date, *, pair_share=.5, report_share=.5,
     compact = compact_records(project, decision, buy, [x['stock_code'] for x in focus])
     explanation = local_explanation(result, compact)
     llm_warning = None
-    if agent == 'claude':
+    if agent in ('codex', 'claude'):
         try:
-            explanation = claude_explanation(result, compact)
+            explanation = codex_explanation(result, compact) if agent == 'codex' else claude_explanation(result, compact)
         except Exception as exc:
-            llm_warning = f'LLM agent unavailable; using transparent local explanation: {exc}'
+            llm_warning = f'{agent} 분석 실패: 데이터 기반 로컬 설명으로 대체했습니다. {exc}'
     elif agent != 'local':
-        raise ValueError('agent must be local or claude')
+        raise ValueError('agent must be local, codex or claude')
     dest = output_dir(project, 'portfolio', str(buy.date()), str(buy.date()), pair_share, report_share, K, seed)
     pd.DataFrame(result['comparison']).sort_values('after_weight', ascending=False).to_csv(
         dest/'ranks_and_weights.csv', index=False, encoding='utf-8-sig')
@@ -501,10 +520,10 @@ def portfolio_for_buy_date(project, buy_date, *, pair_share=.5, report_share=.5,
     return result
 
 
-def refresh_collection_to(project, decision_date, *, limit=30, max_cost=2.0, download_only=False, progress=None):
+def refresh_collection_to(project, decision_date, *, limit=30, max_cost=2.0, download_only=False, progress=None, backend='codex'):
     """Explicit opt-in: scrape ONLY dates not covered by existing handoff; extract at most limit.
 
-    No new data is manufactured if services or Claude CLI are unavailable. The original
+    No new data is manufactured if services or Codex CLI are unavailable. The original
     tracked handoff is never overwritten; output is a local overlay.
     """
     root = repository_root(project)
@@ -524,9 +543,11 @@ def refresh_collection_to(project, decision_date, *, limit=30, max_cost=2.0, dow
     from kr_pair_bootstrap import TRAINED_TICKERS
     codes = ','.join(TRAINED_TICKERS)
     start_s, end_s = str(start.date()), str(end.date())
-    from kr_report_collection import claude_status, run_stage
+    from kr_report_collection import claude_status, codex_status, run_stage
+    if backend not in ('codex', 'claude'):
+        raise ValueError('Allowed extractors: codex or claude')
     if not download_only:
-        state = claude_status()
+        state = codex_status() if backend == 'codex' else claude_status()
         if not state['ready']:
             raise RuntimeError(state['message'] + ' (PDF만 수집하는 옵션은 로그인 없이 이용 가능)')
     if progress:
@@ -536,14 +557,14 @@ def refresh_collection_to(project, decision_date, *, limit=30, max_cost=2.0, dow
                           stage='PDF 다운로드', callback=progress)
     if download_only:
         return ('PDF 다운로드·캐시 확인 완료. 구조화 및 컨센서스 갱신은 수행하지 않았습니다. '
-                'Claude 로그인 후 전체 처리 기능을 실행하면 이미 받은 PDF는 재사용됩니다. '
+                'Codex 로그인 후 전체 처리 기능을 실행하면 이미 받은 PDF는 재사용됩니다. '
                 + fetch_log[-250:])
     if progress:
-        progress('Claude 구조화', f'신규 리포트 최대 {limit}건, API 환산비용 최대 ${max_cost:.2f}')
-    extract_log = run_stage([sys.executable, '-u', '-m', 'pipeline.run', '--stock', codes,
+        progress('리포트 구조화', f'백엔드={backend}; 신규 리포트 최대 {limit}건, 토큰/비용 제한은 보조 기준')
+    extract_log = run_stage([sys.executable, '-u', '-m', 'pipeline.run', '--backend', backend, '--stock', codes,
                              '--since', start_s, '--until', end_s, '--limit', str(limit),
                              '--max-cost', str(max_cost), '--yes'], cwd=collection,
-                            stage='Claude 구조화', callback=progress)
+                            stage='리포트 구조화', callback=progress)
     if progress:
         progress('검증 및 컨센서스', '누락된 구조화 건수 및 리포트 시점 검사 중')
     # Do not promote a partial report snapshot into a seemingly complete consensus.
@@ -588,7 +609,7 @@ def refresh_collection_to(project, decision_date, *, limit=30, max_cost=2.0, dow
                         added.append(c)
         if not added:
             raise RuntimeError('No newly structured reports; current handoff remains unchanged. '
-                               'Check extraction limits/Claude login. '+extract_log)
+                               'Check extraction limits/Codex login. '+extract_log)
         all_records = sorted(records.values(), key=lambda r:(r['date'],r['stock_code'],str(r['nid'])))
         consensus = handoff.consensus_rows(all_records)
         overlay = report_files(project)['overlay']
