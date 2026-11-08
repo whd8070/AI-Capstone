@@ -305,6 +305,7 @@ with refresh_tab:
                         PROJECT, buy_for_refresh, pair_share=pair, report_share=report,
                         K=int(k), seed=int(seed), threads=int(threads), fetch=fetch, agent='local')
                     st.session_state['kr_report_portfolio'] = new_result
+                    st.session_state['codex_refresh_portfolio'] = str(new_result['buy_date'])
                     msg += f" · 포트폴리오 생성 완료: {new_result['path']}"
                 status_box.update(label='리포트 처리 완료', state='complete', expanded=False)
                 st.session_state['collection_notice'] = msg
@@ -315,3 +316,21 @@ with refresh_tab:
                 st.error(str(exc))
                 st.caption('이미 받은 PDF와 추출 결과는 로컬에 남습니다. 완료 건은 재실행 시 건너뛰며 '
                            '검증되지 않은 부분 수집 결과는 컨센서스로 반영하지 않습니다.')
+
+    # A successful one-click refresh also shows the result in this tab.
+    latest_buy = st.session_state.get('codex_refresh_portfolio')
+    latest_port = st.session_state.get('kr_report_portfolio')
+    if latest_buy and latest_port and str(latest_port.get('buy_date')) == latest_buy:
+        st.divider()
+        st.subheader(f'Codex 리포트 반영 포트폴리오 · 매수일 {latest_buy}')
+        st.caption('직전 거래일 종가 신호 → 선택한 매수일 시가 신규 1슬리브 목표비중. '
+                   'Codex는 근거 구조화 담당, 투자비중은 STABLE + BL/CVaR 엔진이 계산합니다.')
+        port_df = pd.DataFrame(latest_port['comparison']).sort_values('after_weight', ascending=False)
+        st.dataframe(port_df[['stock_code', 'company', 'before_rank', 'after_rank',
+                              'before_weight', 'after_weight', 'weight_change']],
+                     hide_index=True, use_container_width=True)
+        st.download_button('리포트 반영 포트폴리오 CSV',
+                           data=port_df.to_csv(index=False).encode('utf-8-sig'),
+                           file_name=f'codex_report_portfolio_{latest_buy}.csv', mime='text/csv')
+        with st.expander('투자비중 변화 및 위험 설명'):
+            st.markdown(latest_port['explanation'])
