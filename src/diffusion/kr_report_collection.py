@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import queue
 import shutil
 import subprocess
@@ -16,12 +17,37 @@ from collections import deque
 from pathlib import Path
 
 
+def claude_executable():
+    """Locate a standalone Claude CLI even if the Streamlit server has a stale PATH.
+
+    Prefer the documented native installation over another command named 'claude'
+    (for example a desktop app shim). Never inspect or copy auth files.
+    """
+    native = Path.home() / '.local' / 'bin' / ('claude.exe' if os.name == 'nt' else 'claude')
+    if native.is_file() and (os.name == 'nt' or os.access(native, os.X_OK)):
+        return str(native)
+    return shutil.which('claude')
+
+
+def claude_env():
+    """Pass an amended PATH only to child jobs; do not alter OS-level settings."""
+    env = os.environ.copy()
+    exe = claude_executable()
+    if exe:
+        folder = str(Path(exe).parent)
+        parts = [p for p in env.get('PATH', '').split(os.pathsep) if p]
+        normalized = os.path.normcase(os.path.normpath(folder))
+        if all(os.path.normcase(os.path.normpath(p)) != normalized for p in parts):
+            env['PATH'] = folder + (os.pathsep + env['PATH'] if env.get('PATH') else '')
+    return env
+
+
 def claude_status(*, timeout=10):
     """Return a sanitized CLI auth state. Do not surface credential JSON or email."""
-    exe = shutil.which('claude')
+    exe = claude_executable()
     if not exe:
         return {'state': 'not_installed', 'ready': False,
-                'message': 'Claude Code CLI를 찾지 못했습니다. 설치 후 웹 서버를 재시작하세요.'}
+                'message': 'Claude Code CLI를 찾지 못했습니다. 선택적 설정 스크립트로 설치/PATH 등록을 진행하세요.'}
     try:
         result = subprocess.run([exe, 'auth', 'status'], capture_output=True,
                                 text=True, encoding='utf-8', errors='replace',
@@ -42,8 +68,8 @@ def claude_status(*, timeout=10):
                     'message': 'Claude 로그인 필요: 터미널에서 claude auth login 실행'}
     except (json.JSONDecodeError, TypeError):
         pass
-    # Do not expose the auth JSON (it can contain account identifiers).
-    return {'state': 'ready', 'ready': True,
+    # Do not expose auth JSON; only the executable path is visible locally.
+    return {'state': 'ready', 'ready': True, 'executable': exe,
             'message': 'Claude CLI 로그인 확인됨. 실행 시 계정 이용한도/요금이 적용될 수 있습니다.'}
 
 
@@ -90,7 +116,7 @@ def run_stage(argv, *, cwd, stage, callback=None, timeout=7200):
     """Run a fixed argv (never shell input); show sanitized progress without storing keys."""
     proc = subprocess.Popen(argv, cwd=str(cwd), stdin=subprocess.DEVNULL,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            text=True, encoding='utf-8', errors='replace', bufsize=1)
+                            env=claude_env(), text=True, encoding='utf-8', errors='replace', bufsize=1)
     lines = deque(maxlen=60)
     q = queue.Queue()
 
