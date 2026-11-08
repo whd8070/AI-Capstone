@@ -131,6 +131,12 @@ def codex_json(prompt, schema, *, timeout=300):
             raise RuntimeError("Codex 응답 필수 필드 누락: " + repr(sorted(required - set(data))))
         if schema.get("additionalProperties") is False and set(data) - set(schema.get("properties", {})):
             raise RuntimeError("Codex 응답에 정의되지 않은 필드가 포함됐습니다.")
+        # Validate nested arrays, enums, page-number types, and required fields too.
+        from jsonschema import Draft202012Validator
+        try:
+            Draft202012Validator(schema).validate(data)
+        except Exception as exc:
+            raise RuntimeError("Codex 구조화 JSON 스키마 검증 실패: " + str(exc)[:450]) from exc
         return data, _usage_from_json_events(result.stdout)
 
 
