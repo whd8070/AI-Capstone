@@ -119,7 +119,7 @@ def confirm(n, a):
 
 def main():
     ap = argparse.ArgumentParser(description="리포트 구조화 파이프라인")
-    ap.add_argument("--backend", choices=list(BACKENDS), default="claude")
+    ap.add_argument("--backend", choices=list(BACKENDS), default="codex")
     ap.add_argument("--stock", help="종목코드(쉼표 구분). 기본: universe.json 전체")
     ap.add_argument("--since")
     ap.add_argument("--until")
@@ -147,7 +147,7 @@ def main():
     if not confirm(len(todo), a):
         return
 
-    model = config.CLAUDE_MODEL if a.backend == "claude" else config.API_MODEL if a.backend == "api" else "-"
+    model = (config.CLAUDE_MODEL if a.backend == "claude" else config.API_MODEL if a.backend == "api" else "configured_codex_cli" if a.backend == "codex" else "-")
     run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
     print(f"run={run_id} backend={a.backend} model={model} 대상 {len(todo)}건 (누적 완료 {len(done)}건)")
     call = BACKENDS[a.backend]
