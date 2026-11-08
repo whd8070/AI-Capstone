@@ -66,6 +66,10 @@ final = (1 - r) × base + r × rank_z(REPORT 목표가 괴리율)
 
 Windows CLI 설치 예시는 PowerShell에서 `irm https://claude.ai/install.ps1 | iex`, macOS는 `curl -fsSL https://claude.ai/install.sh | bash`입니다. 공식 설치 설명을 확인한 뒤 명령을 실행하세요. [Claude Code CLI 공식 설명](https://code.claude.com/docs/en/cli-reference).
 
+**설치 + PATH 설정을 자동화하려면** Windows PowerShell에서 `.\setup_claude_windows.ps1`, macOS에서 `bash ./setup_claude_mac.sh`를 실행하세요. 설치하지 않은 경우에만 Claude 공식 설치 프로그램을 호출하고, `~/.local/bin`을 사용자 PATH(Windows) 또는 셸 프로필(macOS)에 중복 없이 추가합니다. 이후 **새 터미널에서** `claude auth login`, `claude auth status`를 실행합니다. 웹은 표준 실행 파일 경로를 직접 탐색하고 리포트 추출 프로세스에도 보정된 PATH를 전달합니다. 인증 정보는 읽거나 저장하지 않습니다.
+
+PowerShell 스크립트 실행 정책으로 차단될 때는 설치 스크립트의 내용을 확인한 뒤 공식 설치 명령을 직접 실행하고, 위 내용을 따라 PATH를 설정하세요.
+
 **비용 관련 주의:** 웹의 USD 한도는 CLI 파이프라인이 보고한 API 환산비용 기준 중단값입니다. 실제 청구액을 한도 내로 보장하거나 Claude 구독 사용량을 제한하는 금액은 아닙니다. Claude 로그인이 없어도 기존 데이터 기반 백테스트와 로컬 설명은 사용할 수 있습니다.
 
 ## 4. 결과·캐시 및 재실행
