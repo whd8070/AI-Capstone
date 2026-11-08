@@ -218,18 +218,20 @@ with refresh_tab:
     auth = get_claude_status()
     if auth['ready']:
         left.success('Claude CLI 준비됨 · 로그인 확인')
+        st.caption('사용 CLI: ' + auth.get('executable', '인식됨'))
     else:
         left.warning(auth['message'])
         with st.expander('Claude 설치·로그인 방법', expanded=True):
             st.markdown('인증은 **로컬 터미널**에서 진행합니다. 웹은 비밀번호·인증코드·API 키를 받거나 저장하지 않습니다. '
                         '설치/로그인 후 **Streamlit 서버를 재시작**하고 상태를 다시 확인하세요.')
-            st.markdown('**Windows PowerShell — 최초 설치:**')
-            st.code('irm https://claude.ai/install.ps1 | iex', language='powershell')
-            st.markdown('**macOS 터미널 — 최초 설치:**')
-            st.code('curl -fsSL https://claude.ai/install.sh | bash', language='bash')
+            st.markdown('**Windows PowerShell — 설치 및 사용자 PATH 등록:**')
+            st.code('.\\setup_claude_windows.ps1', language='powershell')
+            st.markdown('**macOS 터미널 — 설치 및 셸 PATH 등록:**')
+            st.code('bash ./setup_claude_mac.sh', language='bash')
+            st.caption('설정 스크립트는 Claude 공식 설치 스크립트를 사용하고 ~/.local/bin 경로를 PATH에 등록합니다.')
             st.markdown('**공통 로그인·확인:**')
             st.code('claude auth login\nclaude auth status', language='bash')
-            st.markdown('설치 경로가 인식되지 않으면 터미널/웹 서버를 다시 실행하고 PATH를 확인하세요. '
+            st.markdown('설치와 PATH 설정 후 터미널을 다시 열어 로그인하세요. 웹에서는 표준 설치 경로도 직접 탐색합니다. '
                         'Claude 구독 또는 사용량 과금 설정이 필요할 수 있습니다.')
 
     st.divider()
