@@ -101,6 +101,7 @@ python -m unittest test_kr_pair_cpu test_kr_report_engine test_kr_report_status 
 - `WinError 5`: 구형 파일이 아닌 Git 최신 `kr_report_job.py`/`kr_report_jobs.py`를 사용하고, 기존 서버·백테스트 프로세스를 종료한 뒤 재실행하세요.
 - 시세 다운로드 실패: Yahoo/FRED 연결 및 거래일 시세 제공 여부를 확인하세요. 결측치는 임의의 가격으로 대체하지 않습니다.
 - `use_container_width` 경고: Streamlit API의 폐기 경고이며 기능 실패를 의미하지 않습니다.
+- **Windows 수집 로그에서 `�` 글자가 보임:** 자식 Python 수집 프로세스의 CP949/UTF-8 출력 인코딩 불일치였습니다. 최신 `kr_report_collection.py`는 `PYTHONIOENCODING=utf-8` 및 `PYTHONUTF8=1`을 강제합니다. 기존 깨진 화면 출력은 복원되지 않으므로 새 코드를 받은 뒤 Streamlit을 재시작해 다음 수집부터 확인하세요. 이전에 받은 PDF/메타데이터 캐시는 유지됩니다.
 - 선택적 설명 에이전트: 로컬 기본 설명은 추가 비용이 없지만, `Claude` 모드/신규 PDF 구조화에는 Claude CLI 로그인·설정·사용량이 필요합니다.
 
 ## 6. 제한
