@@ -145,9 +145,6 @@ with portfolio:
     buy_date = st.date_input('매수일 (실제 KRX 거래일, 과거)',
                              value=min(last.date(),dt.date.today()),
                              max_value=dt.date.today(), key='buy_day')
-    agent = st.selectbox('설명 에이전트', options=['local','codex'],
-                         format_func=lambda x:'데이터 기반 로컬 설명 (추가 비용 없음)' if x=='local'
-                         else '연결된 Codex CLI로 한국어 분석 (선택, 로그인/사용량 필요)')
     st.info('표시되는 목표비중은 **해당 매수일에 신규 투입/교체할 1개 슬리브 내부의 비중**입니다. 기존 19개 슬리브를 포함한 전체 계좌 보유비중이 아닙니다.')
     st.caption('이 페이지의 날짜는 신호 생성일이 아니라 매수일입니다. '
                '시세 캘린더에서 전 거래일을 찾아 해당 종가까지만 순위를 계산합니다.')
@@ -156,15 +153,13 @@ with portfolio:
             try:
                 st.session_state['kr_report_portfolio'] = eng.portfolio_for_buy_date(
                     PROJECT, buy_date, pair_share=pair, report_share=report,
-                    K=int(k), seed=int(seed), threads=int(threads), fetch=fetch, agent=agent)
+                    K=int(k), seed=int(seed), threads=int(threads), fetch=fetch)
             except Exception as exc:
                 st.exception(exc)
     if 'kr_report_portfolio' in st.session_state:
         r=st.session_state['kr_report_portfolio']
         st.success(f'신호일 {r["decision_date"]} 종가 → 매수일 {r["buy_date"]} 시가 · 유효 리포트 {r["report_coverage"]}개 종목')
         st.caption(f'결과 저장: {r["path"]} (사전 비중/순위, 사후 비중/순위, 필요한 컴팩트 리포트, 해설)')
-        if r['agent_warning']:
-            st.warning(r['agent_warning'])
         df = pd.DataFrame(r['comparison']).sort_values('after_weight', ascending=False)
         display_columns = ['stock_code','company','before_rank','after_rank','rank_improvement',
                            'before_weight','after_weight','weight_change','report_date',
@@ -189,7 +184,7 @@ with portfolio:
                          '음수 시나리오 비율':f"{s['simulated_loss_frequency']*100:.1f}%"})
         st.dataframe(pd.DataFrame(view),hide_index=True,use_container_width=True)
         st.caption('O 모델이 생성한 20영업일 시나리오의 경험적 통계입니다. 확률 보정·수익 예측력을 검증한 투자 전망은 아닙니다.')
-        st.subheader('투자비중 변화 근거 및 조건부 전망')
+        st.subheader('투자비중 변화 근거 및 모델 시나리오 해석')
         st.markdown(r['explanation'])
         st.download_button('설명 TXT',data=r['explanation'].encode('utf-8'),
                            file_name=f'explanation_{r["buy_date"]}.txt')
@@ -197,41 +192,48 @@ with portfolio:
             st.json(r['compact'],expanded=False)
 
 with refresh_tab:
-    from kr_report_collection import codex_status, collection_plan
+    from kr_report_collection import codex_status, claude_status, collection_plan
 
-    st.subheader('신규 증권사 리포트 수집 · Codex 구조화')
+    st.subheader('신규 증권사 리포트 수집 · LLM 구조화')
     if st.session_state.get('collection_notice'):
         st.success(st.session_state.pop('collection_notice'))
-    st.caption('① 연결된 로컬 Codex 확인 → ② 신규 PDF 확인 → '
-               '③ Codex로 구조화·검증 → ④ 로컬 컨센서스 반영 → ⑤ 선택한 매수일 포트폴리오')
-    st.info('이미 저장된 리포트로 백테스트와 포트폴리오를 만드는 데 Codex가 필요하지 않습니다. '
-            '새 PDF의 근거·위험을 추출하거나 AI 설명을 선택한 경우에만 Codex를 사용합니다.')
+    st.caption('① 로컬 CLI 로그인 확인 → ② 구조화 엔진 선택 → ③ PDF 수집 및 검증 '
+               '→ ④ 컨센서스 반영 → ⑤ 선택적 포트폴리오 계산')
+    st.info('기존 리포트 기반 백테스트 및 포트폴리오에는 LLM이 필요하지 않습니다. '
+            'Claude·Codex는 신규 PDF의 목표주가·근거·리스크 구조화에만 사용합니다.')
 
     @st.cache_data(ttl=60, show_spinner=False)
-    def get_codex_status():
-        return codex_status()
+    def get_llm_status():
+        return {'codex': codex_status(), 'claude': claude_status()}
 
-    left, right = st.columns([3, 1])
-    with right:
-        if st.button('Codex 연결 상태 재확인', key='codex_recheck'):
-            get_codex_status.clear()
-    auth = get_codex_status()
-    if auth['ready']:
-        left.success('로컬 Codex CLI · 로그인 확인')
-        st.caption('CLI 경로: ' + auth.get('executable', '확인됨'))
-    else:
-        left.warning(auth['message'])
-        with st.expander('Codex CLI 연결 방법', expanded=True):
-            st.markdown('**VS Code Codex 확장에 연결된 계정이 있어도, 외부 Python 웹이 자동으로 '
-                        '그 세션을 제어하는 것은 아닙니다.** 같은 PC의 Codex CLI를 확인합니다. '
-                        '인증 정보는 웹에서 읽거나 저장하지 않습니다.')
-            st.markdown('**최초 설치(필요한 경우에만):**')
-            st.code('npm install -g @openai/codex', language='bash')
-            st.markdown('**로컬 터미널 로그인 및 확인:**')
-            st.code('codex login\ncodex login status', language='bash')
-            st.caption('VS Code 확장에 Codex 실행 파일이 포함돼 있으면 이를 탐지할 수도 있지만, '
-                       'CLI 명령이 없거나 로그인 상태를 공유하지 않으면 별도 로그인해야 합니다. '
-                       'Node.js는 Codex CLI 최초 설치에만 필요하며 웹 실행에는 필요하지 않습니다.')
+    if st.button('CLI 연결 상태 다시 확인', key='llm_recheck'):
+        get_llm_status.clear()
+    states = get_llm_status()
+    cols = st.columns(2)
+    for i, key in enumerate(('codex', 'claude')):
+        state = states[key]
+        with cols[i]:
+            st.markdown('**' + ('Codex' if key == 'codex' else 'Claude') + ' CLI**')
+            if state['ready']:
+                st.success('로그인 확인 · 사용 가능')
+                st.caption('실행 파일: ' + state.get('executable', '확인됨'))
+            else:
+                st.warning(state['message'])
+
+    connected = [key for key in ('codex', 'claude') if states[key]['ready']]
+    backend = st.selectbox('신규 리포트를 구조화할 LLM', options=connected,
+                           format_func=lambda k: 'Codex (연결됨)' if k == 'codex'
+                           else 'Claude (연결됨)',
+                           placeholder='연결된 CLI 없음', disabled=not connected,
+                           key='extract_backend')
+    with st.expander('CLI 설치·로그인 안내', expanded=not connected):
+        st.markdown('CLI의 로그인 인증 정보는 웹에서 읽거나 저장하지 않습니다.')
+        st.markdown('**Codex (필요한 경우 설치):**')
+        st.code('npm install -g @openai/codex\ncodex login\ncodex login status', language='bash')
+        st.markdown('**Claude (선택 설치 스크립트 및 로그인):**')
+        st.code('.\\setup_claude_windows.ps1  # Windows\nbash ./setup_claude_mac.sh  # macOS\nclaude auth login\nclaude auth status', language='bash')
+        st.caption('VS Code Codex 확장과 독립 CLI는 로그인 세션을 공유하지 않을 수 있습니다. '
+                   '설치 및 로그인 후 연결 상태를 다시 확인하세요.')
 
     st.divider()
     until = st.date_input('리포트 수집 마감일 (이 날짜까지 공개분)',
@@ -253,20 +255,27 @@ with refresh_tab:
         else:
             st.info('기본 컨센서스에 해당 날짜까지의 정보가 있습니다. 새 구간이 없습니다.')
 
-    mode = st.radio('수집 단계', ['PDF만 다운로드 (Codex 불필요)',
-                               'PDF 다운로드 + Codex 구조화 + 컨센서스 반영'],
+    mode = st.radio('수집 단계', ['PDF만 다운로드 (LLM 불필요)',
+                               'PDF 다운로드 + 선택한 LLM 구조화 + 컨센서스 반영'],
                     key='collection_mode')
     extract = mode.startswith('PDF 다운로드 +')
     if extract:
         limit = st.number_input('이번 실행 구조화 최대 건수', min_value=1, max_value=300, value=30)
-        st.caption('Codex는 현재 로그인된 계정의 사용량을 소비합니다. '
-                   '토큰 상한은 **완료된 리포트의 누적 토큰을 확인해 다음 리포트 시작을 중단**하는 기준입니다. '
-                   '한 번의 호출·실제 과금/사용량에 대한 하드 캡은 아닙니다.')
-        max_tokens = st.number_input('이번 실행 누적 토큰 상한 (완료 건 기준)',
-                                     min_value=10000, max_value=2000000, value=250000, step=10000)
-        cost = 2.0
+        if backend == 'claude':
+            cost = st.number_input('Claude 환산비용 중단 기준 (USD)',
+                                   min_value=0.1, max_value=100.0, value=2.0, step=0.5)
+            max_tokens = 250000
+            st.caption('완료한 호출의 환산 비용을 기준으로 다음 작업을 중단합니다. '
+                       '실제 청구액·구독 한도에 대한 하드 캡은 아닙니다.')
+        else:
+            st.caption('Codex의 누적 토큰 상한은 완료 호출 이후 다음 호출 시작을 중단하는 기준입니다. '
+                       '실제 계정 한도에 대한 하드 캡은 아닙니다.')
+            max_tokens = st.number_input('이번 실행 누적 토큰 상한 (완료 건 기준)',
+                                         min_value=10000, max_value=2000000,
+                                         value=250000, step=10000)
+            cost = 2.0
         auto_portfolio = st.checkbox('구조화 완료 후 해당 매수일 포트폴리오까지 계산',
-                                     key='codex_auto_portfolio', value=False)
+                                     key='refresh_auto_portfolio', value=False)
         buy_for_refresh = None
         if auto_portfolio:
             suggested = min(dt.date.today(), until + dt.timedelta(days=1))
@@ -280,13 +289,13 @@ with refresh_tab:
         st.caption('이 단계는 원본 PDF·메타데이터를 수집합니다. '
                    '추출과 컨센서스 및 포트폴리오 갱신은 하지 않습니다.')
 
-    confirm = st.checkbox('수집 범위·Codex 계정 사용량·시점 제한을 확인했습니다',
+    confirm = st.checkbox('수집 범위·선택한 CLI 사용량·시점 제한을 확인했습니다',
                           key='refresh_confirm')
     invalid_dates = bool(auto_portfolio and buy_for_refresh <= until)
     if invalid_dates:
         st.error('포트폴리오 매수일은 수집 마감일 이후여야 합니다. 미래 정보 사용을 방지합니다.')
     allowed = bool(plan and plan['can_fetch'] and confirm and
-                   not invalid_dates and (not extract or auth['ready']))
+                   not invalid_dates and (not extract or backend in connected))
     if st.button('선택한 단계 실행', disabled=not allowed, type='primary', key='refresh_run'):
         with st.status('신규 리포트 처리 중', expanded=True) as status_box:
             event_log = st.empty()
@@ -298,18 +307,18 @@ with refresh_tab:
                 msg = eng.refresh_collection_to(
                     PROJECT, until, limit=int(limit), max_cost=float(cost),
                     max_tokens=int(max_tokens), download_only=not extract,
-                    progress=progress, backend='codex')
+                    progress=progress, backend=backend if extract else 'codex')
                 if extract and auto_portfolio:
                     progress('포트폴리오', '시점별 데이터 갱신 · PAIR 추론 · REPORT 결합')
                     new_result = eng.portfolio_for_buy_date(
                         PROJECT, buy_for_refresh, pair_share=pair, report_share=report,
-                        K=int(k), seed=int(seed), threads=int(threads), fetch=fetch, agent='local')
+                        K=int(k), seed=int(seed), threads=int(threads), fetch=fetch)
                     st.session_state['kr_report_portfolio'] = new_result
-                    st.session_state['codex_refresh_portfolio'] = str(new_result['buy_date'])
+                    st.session_state['refresh_portfolio_buy'] = str(new_result['buy_date'])
                     msg += f" · 포트폴리오 생성 완료: {new_result['path']}"
                 status_box.update(label='리포트 처리 완료', state='complete', expanded=False)
                 st.session_state['collection_notice'] = msg
-                get_codex_status.clear()
+                get_llm_status.clear()
                 st.rerun()
             except Exception as exc:
                 status_box.update(label='수집·구조화·포트폴리오 단계 오류', state='error', expanded=True)
@@ -318,19 +327,19 @@ with refresh_tab:
                            '검증되지 않은 부분 수집 결과는 컨센서스로 반영하지 않습니다.')
 
     # A successful one-click refresh also shows the result in this tab.
-    latest_buy = st.session_state.get('codex_refresh_portfolio')
+    latest_buy = st.session_state.get('refresh_portfolio_buy')
     latest_port = st.session_state.get('kr_report_portfolio')
     if latest_buy and latest_port and str(latest_port.get('buy_date')) == latest_buy:
         st.divider()
-        st.subheader(f'Codex 리포트 반영 포트폴리오 · 매수일 {latest_buy}')
+        st.subheader(f'리포트 반영 포트폴리오 · 매수일 {latest_buy}')
         st.caption('직전 거래일 종가 신호 → 선택한 매수일 시가 신규 1슬리브 목표비중. '
-                   'Codex는 근거 구조화 담당, 투자비중은 STABLE + BL/CVaR 엔진이 계산합니다.')
+                   '선택한 LLM은 근거 구조화 담당, 투자비중은 STABLE + BL/CVaR 엔진이 계산합니다.')
         port_df = pd.DataFrame(latest_port['comparison']).sort_values('after_weight', ascending=False)
         st.dataframe(port_df[['stock_code', 'company', 'before_rank', 'after_rank',
                               'before_weight', 'after_weight', 'weight_change']],
                      hide_index=True, use_container_width=True)
         st.download_button('리포트 반영 포트폴리오 CSV',
                            data=port_df.to_csv(index=False).encode('utf-8-sig'),
-                           file_name=f'codex_report_portfolio_{latest_buy}.csv', mime='text/csv')
+                           file_name=f'report_portfolio_{latest_buy}.csv', mime='text/csv')
         with st.expander('투자비중 변화 및 위험 설명'):
             st.markdown(latest_port['explanation'])
