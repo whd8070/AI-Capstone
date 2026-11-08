@@ -2,11 +2,11 @@
 
 이 폴더의 기존 `kr_pair_cpu.py`, `kr_pair_core.py`, `KR_MOM_PAIR_20_SLEEVES_CPU.ipynb`에 REPORT 순위 신호를 추가한 **로컬 Streamlit 실험용 대시보드**입니다. 자동 주문 기능은 없습니다.
 
-> 처음 복제했다면 저장소 [루트 README](../../README.md)의 **빠른 시작**을 먼저 따르세요. Windows에서는 이 폴더에서 `./setup_windows.ps1` → `./run_web.ps1` 순서로 실행하면 됩니다.
+> 처음 복제했다면 저장소 [루트 README](../../README.md)의 **Windows / macOS 빠른 시작**을 먼저 따르세요. Windows는 PowerShell 스크립트, macOS는 터미널 명령을 사용합니다.
 
 ## 1. 필수 파일과 설치
 
-- 권장 운영체제: Windows 11 + PowerShell / Python **3.11 (64비트)**.
+- 지원 설치 안내: Windows 11(PowerShell), macOS(Intel / Apple Silicon, 터미널) / Python **3.11 (64비트)**. 실제 전체 백테스트 검증은 환경별로 필요합니다.
 - 학습된 한국 STABLE 체크포인트: `src/diffusion/checkpoints/kr/stable_best.pt` (`git clone` 후 파일 존재 여부 확인). 임의의 다른 모델이나 무작위 체크포인트로 대체하지 마세요.
 - 컨센서스: `agents/collection/data/handoff/daily_consensus.csv`.
 - 설명 근거: `agents/collection/data/handoff/reports_compact.jsonl`.
@@ -28,6 +28,23 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe -m unittest test_kr_pair_cpu test_kr_report_engine test_kr_report_status -v
 .\.venv\Scripts\python.exe -m streamlit run kr_report_web.py --server.address 127.0.0.1 --server.port 8501
 ```
+
+macOS에서는 터미널을 열고 아래와 같이 실행합니다. Python 3.11이 없으면 [Homebrew](https://brew.sh/)를 설치한 후 `brew install python@3.11`을 실행하세요.
+
+```bash
+# 저장소 루트에서 시작하는 경우
+cd src/diffusion
+
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements_kr_report_web.txt
+python -m ipykernel install --user --name ai-capstone-kr --display-name "AI-Capstone KR (.venv)"
+python -m unittest test_kr_pair_cpu test_kr_report_engine test_kr_report_status -v
+python -m streamlit run kr_report_web.py --server.address 127.0.0.1 --server.port 8501
+```
+
+Mac에서 다시 실행할 때는 `source .venv/bin/activate` 후 마지막 Streamlit 명령만 사용합니다. CPU 추론이므로 MPS/CUDA는 필수 아님에 유의하세요. Mac의 실제 모델 추론 및 원격 데이터 수집 성공 여부는 환경에서 확인해야 합니다.
 
 `http://127.0.0.1:8501`을 브라우저에서 엽니다. Streamlit은 Python 앱으로, 별도의 프런트엔드 컴파일이나 Node.js 빌드가 필요하지 않습니다. 종료할 때는 실행 터미널에서 `Ctrl+C`를 누르세요. VS Code 노트북을 사용한다면 커널 `AI-Capstone KR (.venv)`를 선택합니다.
 
@@ -64,9 +81,18 @@ final = (1 - r) × base + r × rank_z(REPORT 목표가 괴리율)
 
 ## 5. 테스트·문제 해결
 
+Windows PowerShell:
+
 ```powershell
 cd src\diffusion
 .\.venv\Scripts\python.exe -m unittest test_kr_pair_cpu test_kr_report_engine test_kr_report_status -v
+```
+
+macOS 터미널 (`src/diffusion` 위치):
+
+```bash
+source .venv/bin/activate
+python -m unittest test_kr_pair_cpu test_kr_report_engine test_kr_report_status -v
 ```
 
 - `ModuleNotFoundError`: 설치에 사용한 `.venv\Scripts\python.exe`로 Streamlit을 실행했는지 확인하세요.
