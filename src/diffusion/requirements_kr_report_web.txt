@@ -12,4 +12,4 @@ psutil>=5.9
 requests
 pymupdf
 jsonschema>=4.20
-# JupyterLab / ipykernel / nbformat / matplotlib 및 Claude CLI는 기본 설치 대상이 아님
+# JupyterLab / ipykernel / nbformat / matplotlib 및 Codex CLI는 기본 설치 대상이 아님
