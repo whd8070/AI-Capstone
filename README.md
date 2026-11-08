@@ -1,5 +1,47 @@
 # 개미구조대
 
+> 아주대학교 AI 캡스톤디자인 · 국내 주식 MOM + PAIR + REPORT 로컬 웹 프로토타입
+
+## 🚀 빠른 시작 — Windows 11 / Python 3.11
+
+**처음 복제한 사람도 설치 스크립트로 Diffusion과 REPORT 웹을 한 번에 설치할 수 있습니다.** 기존 Diffusion 노트북과 로컬 Streamlit 대시보드는 동일한 가상환경을 사용합니다.
+
+**준비물:** Git, **64비트 Python 3.11**, Windows PowerShell, 인터넷 연결. 학습된 한국 STABLE 체크포인트 `src/diffusion/checkpoints/kr/stable_best.pt`와 리포트 데이터 `agents/collection/data/handoff/`의 존재 여부를 확인하세요. (체크포인트가 빠진 경우 해당 한국 모델 파일이 별도로 필요합니다.)
+
+```powershell
+git clone https://github.com/whd8070/AI-Capstone.git
+cd AI-Capstone\src\diffusion
+
+# .venv 생성, Diffusion + 웹 + 리포트 수집 의존성 설치, Jupyter 커널 등록 및 테스트
+.\setup_windows.ps1
+
+# 127.0.0.1:8501 로컬 웹 서버 시작
+.\run_web.ps1
+```
+
+브라우저에서 **http://127.0.0.1:8501**로 접속합니다. **Node.js 빌드와 Jupyter 실행은 필요하지 않습니다.** 웹의 K=128·seed=0은 고정이고, 사용자는 PAIR 비율 및 REPORT 비율(0~1)을 조정합니다. 로컬 웹에서 실제 자동 매매 주문은 하지 않습니다.
+
+PowerShell에서 스크립트 실행이 차단된다면 아래 명령을 **`src/diffusion` 폴더에서** 순서대로 실행하세요(실행 정책 변경 불필요).
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements_kr_report_web.txt
+.\.venv\Scripts\python.exe -m ipykernel install --user --name ai-capstone-kr --display-name "AI-Capstone KR (.venv)"
+.\.venv\Scripts\python.exe -m unittest test_kr_pair_cpu test_kr_report_engine test_kr_report_status -v
+.\.venv\Scripts\python.exe -m streamlit run kr_report_web.py --server.address 127.0.0.1 --server.port 8501
+```
+
+- **통합 의존성:** `src/diffusion/requirements_kr_report_web.txt`가 `requirements_kr_pair_cpu.txt`, 리포트 수집용 `agents/collection/requirements.txt`, Streamlit/Jupyter 패키지를 함께 설치합니다. 별도의 `pip install` 두 번은 필요하지 않습니다.
+- **백테스트:** 매 거래일 종가에 신호를 만들고 다음 거래일 시가에 20개 슬리브 중 하나를 교체합니다. REPORT 사용 전/후 NAV, Sharpe, MDD, 연환산 변동성·수익률을 비교합니다.
+- **특정 매수일 포트폴리오:** 직전 거래일 종가와 **매수일보다 이전** 보고서만 사용하여 순위·최적 비중·설명 근거를 제시합니다.
+- **검증·한계:** 원격 Yahoo/FRED 및 선택적 Claude CLI 접속은 실행 환경에 따라 실패할 수 있습니다. 추론은 CPU 기반이며 K=128의 일별 장기간 백테스트는 오래 걸릴 수 있습니다. 과거 고정 44종목 사용, 시가체결·비용 가정 등의 한계가 있습니다. 웹은 연구 프로토타입이지 수익 보장이나 투자 권유가 아닙니다.
+- **생성 결과:** `src/diffusion/results/kr_report_dashboard/`에 저장하며 Git에 올리지 않습니다.
+
+자세한 설명: [REPORT 웹 설치·데이터·한계](src/diffusion/README_KR_REPORT_WEB.md) / [기존 MOM+PAIR 모델·백테스트](src/diffusion/README_KR_PAIR_CPU.md).
+
+---
+
 ## 프로젝트 소개
 
 아주대학교 AI 캡스톤디자인 과목에서 진행하는 프로젝트입니다.
@@ -17,11 +59,9 @@
 - 주요 대상: 체계적인 재무계획이 필요하거나 주식·ETF 등 금융상품에 직접 투자하는 개인
 - 확정 도메인: CFP형 종합 자산관리, 투자 의견 정교화, 금융정책·공공지원 맞춤 탐색
 
-## 현재 단계
+## 현재 구현 상황 (2026년 11월)
 
-프로젝트 도메인은 CFP형 종합 자산관리, 투자 의견 정교화와 금융정책·공공지원 맞춤 탐색으로 확정했습니다.
-현재는 사용자 인터뷰와 프로토타입을 통해 각 도메인의 문제 우선순위, 핵심 기능과 사용자 가치를 구체화하는 단계입니다.
-제품 형태, 세부 기능의 우선순위 및 기술 스택은 검증 결과를 바탕으로 결정합니다.
+프로젝트의 세 도메인(CFP형 자산관리·투자 의견 정교화·금융정책 탐색)은 전체 제품 방향입니다. 현재 저장소에는 그중 **투자 의견 정교화**와 연결되는 연구 프로토타입으로 한국 44종목의 STABLE 확산모델 기반 MOM+PAIR 백테스트 및 증권사 리포트를 결합한 로컬 웹 대시보드가 구현돼 있습니다. 나머지 기능은 요구사항 검증과 설계 단계이며, 구현 완료 기능과 구분합니다.
 
 ## 확정 도메인
 

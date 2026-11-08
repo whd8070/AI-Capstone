@@ -23,3 +23,6 @@ src/diffusion/results/kr_pair_cpu/backtests/
 src/diffusion/results/kr_pair_cpu/signals/
 src/diffusion/.ipynb_checkpoints/
 src/diffusion/.pytest_cache/
+
+# Local REPORT web artifacts, worker jobs, and generated reports
+src/diffusion/results/kr_report_dashboard/
