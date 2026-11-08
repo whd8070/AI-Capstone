@@ -104,7 +104,7 @@ def codex_json(prompt, schema, *, timeout=300):
         result_file = workspace / "answer.json"
         schema_file.write_text(json.dumps(schema, ensure_ascii=False), encoding="utf-8")
         cmd = [exe, "exec", "--sandbox", "read-only",
-               "--skip-git-repo-check", "--ephemeral",
+               "--ignore-user-config", "--skip-git-repo-check", "--ephemeral",
                "--config", "approval_policy=\"never\"",
                "--json", "--output-schema", str(schema_file),
                "--output-last-message", str(result_file), "-"]
