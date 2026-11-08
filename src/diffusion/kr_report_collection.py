@@ -114,9 +114,14 @@ def collection_plan(project, until):
 
 def run_stage(argv, *, cwd, stage, callback=None, timeout=7200):
     """Run a fixed argv (never shell input); show sanitized progress without storing keys."""
+    # Windows pipes often default to CP949, but the Streamlit log reader uses UTF-8.
+    # Force *the child Python process* to emit UTF-8; decoding only the parent
+    # side as UTF-8 would irreversibly replace Korean characters with U+FFFD.
+    env = claude_env()
+    env.update(PYTHONIOENCODING='utf-8', PYTHONUTF8='1', PYTHONUNBUFFERED='1')
     proc = subprocess.Popen(argv, cwd=str(cwd), stdin=subprocess.DEVNULL,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            env=claude_env(), text=True, encoding='utf-8', errors='replace', bufsize=1)
+                            env=env, text=True, encoding='utf-8', errors='strict', bufsize=1)
     lines = deque(maxlen=60)
     q = queue.Queue()
 
