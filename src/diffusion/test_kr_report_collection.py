@@ -73,6 +73,26 @@ class CommandTests(unittest.TestCase):
         self.assertIn('[ok 1/1]',output)
         self.assertTrue(events)
 
+    def test_korean_windows_child_output_is_utf8(self):
+        # Simulate a Windows parent locale while the Python worker writes Korean.
+        observed=[]
+        script = (
+            'import sys; '
+            'print("신규 리포트 다운로드 성공: 삼성전자 / 누락 0건"); '
+            'print(sys.stdout.encoding)'
+        )
+        with patch.dict('kr_report_collection.os.environ', {'PYTHONIOENCODING':'cp949', 'PYTHONUTF8':'0'}):
+            output=collection.run_stage(
+                [sys.executable, '-u', '-c', script],
+                cwd=Path.cwd(), stage='PDF 다운로드',
+                callback=lambda stage,line: observed.append(line),
+                timeout=10)
+        self.assertIn('삼성전자', output)
+        self.assertIn('신규 리포트', output)
+        self.assertIn('utf-8', output.lower())
+        self.assertTrue(any('삼성전자' in line for line in observed))
+        self.assertNotIn('\ufffd', output)
+
     def test_nonzero_is_error(self):
         with self.assertRaisesRegex(RuntimeError,'종료코드 2'):
             collection.run_stage([sys.executable,'-u','-c','import sys; print("bad"); sys.exit(2)'],
