@@ -46,6 +46,25 @@ except Exception as err:
     st.error(f'리포트 파일을 읽지 못했습니다: {err}')
     st.stop()
 
+from kr_report_collection import codex_status, claude_status, collection_plan
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def get_llm_status():
+    return {'codex': codex_status(), 'claude': claude_status()}
+
+
+def connected_agents():
+    states = get_llm_status()
+    return [key for key in ('codex', 'claude') if states[key]['ready']]
+
+
+def display_agent(key):
+    return {'local': '데이터 기반 로컬 해설 (LLM 호출 없음)',
+            'codex': 'Codex CLI (로그인 확인됨)',
+            'claude': 'Claude CLI (로그인 확인됨)'}[key]
+
+
 bt, portfolio, refresh_tab = st.tabs(['기간 백테스트', '특정 매수일 포트폴리오', '리포트 신규 수집 (선택)'])
 
 with bt:
@@ -145,6 +164,16 @@ with portfolio:
     buy_date = st.date_input('매수일 (실제 KRX 거래일, 과거)',
                              value=min(last.date(),dt.date.today()),
                              max_value=dt.date.today(), key='buy_day')
+    available_explain = ['local'] + connected_agents()
+    explanation_agent = st.selectbox(
+        '포트폴리오 설명 방식', options=available_explain,
+        format_func=display_agent, key='portfolio_explain_agent')
+    if explanation_agent != 'local':
+        st.caption('투자비중은 기존 STABLE·BL/CVaR 엔진이 계산합니다. '
+                   '선택한 CLI는 상대 순위 변화와 리포트 근거·남는 위험만 해설합니다.')
+    elif len(available_explain) == 1:
+        st.caption('연결된 Claude/Codex CLI가 없어 로컬 해설을 표시합니다. '
+                   '3번째 페이지에서 CLI 설치·로그인을 확인할 수 있습니다.')
     st.info('표시되는 목표비중은 **해당 매수일에 신규 투입/교체할 1개 슬리브 내부의 비중**입니다. 기존 19개 슬리브를 포함한 전체 계좌 보유비중이 아닙니다.')
     st.caption('이 페이지의 날짜는 신호 생성일이 아니라 매수일입니다. '
                '시세 캘린더에서 전 거래일을 찾아 해당 종가까지만 순위를 계산합니다.')
@@ -153,13 +182,17 @@ with portfolio:
             try:
                 st.session_state['kr_report_portfolio'] = eng.portfolio_for_buy_date(
                     PROJECT, buy_date, pair_share=pair, report_share=report,
-                    K=int(k), seed=int(seed), threads=int(threads), fetch=fetch)
+                    K=int(k), seed=int(seed), threads=int(threads), fetch=fetch,
+                    agent=explanation_agent)
             except Exception as exc:
                 st.exception(exc)
     if 'kr_report_portfolio' in st.session_state:
         r=st.session_state['kr_report_portfolio']
         st.success(f'신호일 {r["decision_date"]} 종가 → 매수일 {r["buy_date"]} 시가 · 유효 리포트 {r["report_coverage"]}개 종목')
         st.caption(f'결과 저장: {r["path"]} (사전 비중/순위, 사후 비중/순위, 필요한 컴팩트 리포트, 해설)')
+        st.caption('해설 생성: '+display_agent(r.get('agent_used', 'local')))
+        if r.get('agent_warning'):
+            st.warning(r['agent_warning'])
         df = pd.DataFrame(r['comparison']).sort_values('after_weight', ascending=False)
         display_columns = ['stock_code','company','before_rank','after_rank','rank_improvement',
                            'before_weight','after_weight','weight_change','report_date',
@@ -192,19 +225,14 @@ with portfolio:
             st.json(r['compact'],expanded=False)
 
 with refresh_tab:
-    from kr_report_collection import codex_status, claude_status, collection_plan
-
     st.subheader('신규 증권사 리포트 수집 · LLM 구조화')
     if st.session_state.get('collection_notice'):
         st.success(st.session_state.pop('collection_notice'))
     st.caption('① 로컬 CLI 로그인 확인 → ② 구조화 엔진 선택 → ③ PDF 수집 및 검증 '
                '→ ④ 컨센서스 반영 → ⑤ 선택적 포트폴리오 계산')
-    st.info('기존 리포트 기반 백테스트 및 포트폴리오에는 LLM이 필요하지 않습니다. '
-            'Claude·Codex는 신규 PDF의 목표주가·근거·리스크 구조화에만 사용합니다.')
-
-    @st.cache_data(ttl=60, show_spinner=False)
-    def get_llm_status():
-        return {'codex': codex_status(), 'claude': claude_status()}
+    st.info('새 리포트 구조화는 선택한 Claude/Codex CLI로 실행합니다. '
+            '포트폴리오 설명에도 연결된 CLI를 선택할 수 있습니다. '
+            '투자비중은 기존 STABLE·BL/CVaR 엔진이 계산합니다.')
 
     if st.button('CLI 연결 상태 다시 확인', key='llm_recheck'):
         get_llm_status.clear()
@@ -220,7 +248,7 @@ with refresh_tab:
             else:
                 st.warning(state['message'])
 
-    connected = [key for key in ('codex', 'claude') if states[key]['ready']]
+    connected = connected_agents()
     backend = st.selectbox('신규 리포트를 구조화할 LLM', options=connected,
                            format_func=lambda k: 'Codex (연결됨)' if k == 'codex'
                            else 'Claude (연결됨)',
@@ -276,8 +304,16 @@ with refresh_tab:
             cost = 2.0
         auto_portfolio = st.checkbox('구조화 완료 후 해당 매수일 포트폴리오까지 계산',
                                      key='refresh_auto_portfolio', value=False)
+        explain_on_refresh = 'local'
         buy_for_refresh = None
         if auto_portfolio:
+            available_explain = ['local'] + connected
+            idx = available_explain.index(backend) if backend in available_explain else 0
+            explain_on_refresh = st.selectbox(
+                '완성된 포트폴리오의 설명 방식', options=available_explain,
+                index=idx, format_func=display_agent, key='refresh_explain_agent')
+            st.caption('리포트 추출 CLI와 포트폴리오 설명 CLI는 각각 선택합니다. '
+                       '비중 최적화 계산에는 LLM이 관여하지 않습니다.')
             suggested = min(dt.date.today(), until + dt.timedelta(days=1))
             buy_for_refresh = st.date_input('포트폴리오 매수일 (실제 KRX 거래일)',
                                             value=suggested, max_value=dt.date.today(),
@@ -286,6 +322,7 @@ with refresh_tab:
                        '매수일 당일 리포트는 사용하지 않으며, 이전 리포트만 적용합니다.')
     else:
         limit, cost, max_tokens, auto_portfolio, buy_for_refresh = 1, 1.0, 250000, False, None
+        explain_on_refresh = 'local'
         st.caption('이 단계는 원본 PDF·메타데이터를 수집합니다. '
                    '추출과 컨센서스 및 포트폴리오 갱신은 하지 않습니다.')
 
@@ -312,7 +349,8 @@ with refresh_tab:
                     progress('포트폴리오', '시점별 데이터 갱신 · PAIR 추론 · REPORT 결합')
                     new_result = eng.portfolio_for_buy_date(
                         PROJECT, buy_for_refresh, pair_share=pair, report_share=report,
-                        K=int(k), seed=int(seed), threads=int(threads), fetch=fetch)
+                        K=int(k), seed=int(seed), threads=int(threads), fetch=fetch,
+                        agent=explain_on_refresh)
                     st.session_state['kr_report_portfolio'] = new_result
                     st.session_state['refresh_portfolio_buy'] = str(new_result['buy_date'])
                     msg += f" · 포트폴리오 생성 완료: {new_result['path']}"
@@ -341,5 +379,8 @@ with refresh_tab:
         st.download_button('리포트 반영 포트폴리오 CSV',
                            data=port_df.to_csv(index=False).encode('utf-8-sig'),
                            file_name=f'report_portfolio_{latest_buy}.csv', mime='text/csv')
+        if latest_port.get('agent_warning'):
+            st.warning(latest_port['agent_warning'])
         with st.expander('투자비중 변화 및 위험 설명'):
+            st.caption('해설 생성: '+display_agent(latest_port.get('agent_used', 'local')))
             st.markdown(latest_port['explanation'])
