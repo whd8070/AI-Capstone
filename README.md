@@ -45,23 +45,24 @@ python -m streamlit run kr_report_web.py --server.address 127.0.0.1 --server.por
 - **백테스트:** 종가 신호를 다음 거래일 시가에 체결하는 20슬리브 전략. NAV·Sharpe·MDD·연환산 변동성 등을 비교합니다.
 - **날짜별 포트폴리오:** 직전 거래일 시세와 매수일 이전 리포트를 활용해 순위·비중·설명 근거를 제시합니다.
 - **필수 설치 범위:** `requirements_kr_report_web.txt`에는 웹 실행, Diffusion 추론, 시세 다운로드 및 **웹의 선택적 리포트 수집 기능**에 필요한 Python 패키지만 포함합니다. JupyterLab·ipykernel·nbformat·matplotlib은 포함하지 않습니다.
-- **선택적 외부 도구:** Claude 기반 설명/새 리포트 추출을 사용할 때만 별도 **Claude CLI 설치·인증**이 필요합니다. 기본 로컬 설명과 기존 리포트 사용에는 필요하지 않습니다.
+- **선택적 외부 도구:** Codex 기반 설명/새 리포트 추출을 사용할 때만 **로컬 Codex CLI 설치·인증**이 필요합니다. 기본 로컬 설명과 기존 리포트 사용에는 필요하지 않습니다.
 - **제약:** macOS는 설치 안내를 제공하지만 전체 백테스트 실기기 검증은 아직 별도 확인이 필요합니다. 웹은 자동 매매를 하지 않는 연구용 프로토타입입니다.
 
-### 신규 리포트 수집과 Claude 로그인 (선택)
+### 신규 리포트 수집·Codex 연결 (선택)
 
-웹의 **리포트 신규 수집** 탭에서 Claude CLI 로그인 상태를 확인할 수 있습니다. 이미 저장된 컨센서스만 사용할 때는 로그인할 필요가 없습니다. 네이버 PDF만 다운로드하는 기능도 로그인 없이 이용할 수 있습니다.
+로컬 웹의 **리포트 신규 수집** 탭은 이미 설치된 **Codex CLI**를 찾아 로그인 상태를 확인합니다. VS Code Codex 확장에 로그인되어 있더라도 다른 프로세스에서 그 세션을 직접 제어할 수 있다는 보장은 없으므로, 로컬 CLI에서 `codex login status`로 상태를 확인합니다. 웹에서 비밀번호·API 키를 받거나 저장하지 않습니다.
 
-리포트 본문의 근거·리스크를 추출하려면 Claude Code CLI를 별도로 설치하고, **로컬 터미널에서** 아래 명령으로 로그인하세요. 로그인 후 웹 서버를 다시 시작하고 **인증 상태 다시 확인**을 누릅니다. 웹에 계정 비밀번호나 API 키를 입력하지 않습니다.
+Codex CLI가 없다면 **선택적으로** Node.js 설치 후 다음 명령으로 설치·로그인하세요. (기본 Streamlit 웹 실행에는 Node.js도 Codex도 필요 없음.)
 
 ```bash
-claude auth login
-claude auth status
+npm install -g @openai/codex
+codex login
+codex login status
 ```
 
-수집 화면에는 날짜별 대상 범위, 다운로드·구조화 완료 건수, 남은 대기 건수와 처리 단계 로그가 표시됩니다. 추출 상한 또는 사용량 때문에 일부 보고서가 남으면 **불완전한 컨센서스로 게시하지 않습니다.** CLI 설치: [Claude Code 공식 문서](https://code.claude.com/docs/en/overview).
+**수집 → 포트폴리오 흐름:** 네이버 PDF 수집 → Codex의 JSON Schema 구조화 → 원문 인용 검증 및 기존 메타데이터와 수치 대조 → 누락 건 검사 → 로컬 컨센서스 오버레이 작성 → **선택한 과거 매수일의 MOM+PAIR+REPORT 포트폴리오 생성**. 미완료 리포트가 있으면 컨센서스를 갱신하지 않으며, 매수일 당일이나 미래에 공개된 보고서는 투자 신호에 포함하지 않습니다. 모델 K=128·시드=0은 고정입니다.
 
-**Claude 설치·PATH 자동 설정(선택):** Windows에서는 `src/diffusion`에서 `.\setup_claude_windows.ps1`, macOS에서는 `bash ./setup_claude_mac.sh`를 실행하세요. 공식 설치 프로그램을 호출하고 사용자 PATH에 `~/.local/bin`을 중복 없이 등록합니다. 설치 이후 **별도 터미널에서** `claude auth login`으로 로그인합니다. 웹은 CLI의 표준 설치 경로도 직접 탐지하므로, 기존 Streamlit 프로세스의 PATH가 오래됐어도 실행 파일을 찾을 수 있습니다. 웹 자체의 최초 설치에는 Claude가 필요하지 않습니다.
+Codex는 연결된 계정의 사용량 제한을 따릅니다. 앱에 표시된 환산 USD는 실제 결제액이나 사용량을 제한하는 하드 캡이 아닙니다. CLI가 없어도 기존 리포트 기반 백테스트·로컬 해설과 PDF 다운로드는 이용할 수 있습니다.
 
 더 보기: [웹 상세 사용법·선택적 테스트](src/diffusion/README_KR_REPORT_WEB.md) · [기존 Jupyter MOM+PAIR 별도 실행](src/diffusion/README_KR_PAIR_CPU.md).
 
