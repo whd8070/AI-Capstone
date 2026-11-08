@@ -50,7 +50,7 @@ def claude_status(*, timeout=10):
                 'message': 'Claude Code CLI를 찾지 못했습니다. 선택적 설정 스크립트로 설치/PATH 등록을 진행하세요.'}
     try:
         result = subprocess.run([exe, 'auth', 'status'], capture_output=True,
-                                text=True, encoding='utf-8', errors='replace',
+                                env=claude_env(), text=True, encoding='utf-8', errors='replace',
                                 timeout=timeout, stdin=subprocess.DEVNULL, check=False)
     except (OSError, subprocess.TimeoutExpired):
         return {'state': 'check_failed', 'ready': False,
