@@ -11,4 +11,5 @@ psutil>=5.9
 # 웹에서 '신규 리포트 수집'을 선택할 때 사용
 requests
 pymupdf
+jsonschema>=4.20
 # JupyterLab / ipykernel / nbformat / matplotlib 및 Claude CLI는 기본 설치 대상이 아님
