@@ -2,6 +2,7 @@
 
 usage 키: input_tokens(캐시 포함 전체), cached_input_tokens, output_tokens, cost_usd(모르면 None), turns
 
+[codex]  Codex CLI (existing ChatGPT login; read-only, structured JSON)
 [claude] Claude Code CLI (Max 구독 로그인)
   토큰 절감 설계:
    - 기본 시스템 프롬프트 대신 짧은 추출 전용 프롬프트(--system-prompt-file)
@@ -79,4 +80,11 @@ def call_mock(header, text, schema):
             {"input_tokens": 0, "cached_input_tokens": 0, "output_tokens": 0, "cost_usd": None, "turns": 0})
 
 
-BACKENDS = {"claude": call_claude, "api": call_api, "mock": call_mock}
+def call_codex(header, text, schema):
+    """Existing local Codex login, no direct API key and no codebase write access."""
+    from .codex_backend import codex_extract
+    instructions = config.SYSTEM_PROMPT_FILE.read_text(encoding='utf-8')
+    return codex_extract(header, text, schema, instructions)
+
+
+BACKENDS = {"codex": call_codex, "claude": call_claude, "api": call_api, "mock": call_mock}
