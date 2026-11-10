@@ -193,16 +193,21 @@ with portfolio:
         st.caption('해설 생성: '+display_agent(r.get('agent_used', 'local')))
         if r.get('agent_warning'):
             st.warning(r['agent_warning'])
-        df = pd.DataFrame(r['comparison']).sort_values('after_weight', ascending=False)
-        display_columns = ['stock_code','company','before_rank','after_rank','rank_improvement',
-                           'before_weight','after_weight','weight_change','report_date',
-                           'report_target_price','raw_close','implied_upside']
-        st.dataframe(df[display_columns], hide_index=True, use_container_width=True,
-                     column_config={
-                         'before_weight':st.column_config.NumberColumn('REPORT 전 비중',format='%.4f'),
-                         'after_weight':st.column_config.NumberColumn('REPORT 후 비중',format='%.4f'),
-                         'weight_change':st.column_config.NumberColumn('비중 변화',format='%+.4f'),
-                         'implied_upside':st.column_config.NumberColumn('목표가 괴리율',format='%+.3f')})
+        held_only = st.checkbox('실제 편입 종목만 보기 (최종 비중 0% 제외)', value=True,
+                                key='portfolio_holdings_only')
+        display_rows = eng.display_portfolio_rows(r['comparison'], held_only=held_only)
+        st.caption(f"표시 종목 {len(display_rows)}개 / 전체 {len(r['comparison'])}개 · "
+                   "비중은 % 단위 소수점 둘째 자리 표시, 변화는 %p 단위입니다. "
+                   "표시만 반올림하고 원본 계산/CSV는 정밀도를 유지합니다.")
+        st.dataframe(pd.DataFrame(display_rows), hide_index=True, use_container_width=True)
+        verification = r.get('verification', {})
+        if verification.get('status') == 'PASS':
+            st.success(f"독립 검증 승인 · 주장 {verification.get('claim_count', 0)}개 · "
+                       f"검증 모델 {verification.get('backend', '-')}")
+        elif verification.get('status') == 'LOCAL_RULE_ONLY':
+            st.info('로컬 설명: 구조·표시 규칙만 검사했습니다. 독립 LLM 의미 검증은 수행하지 않았습니다.')
+        else:
+            st.warning('설명 검증 상태를 확인하지 못했습니다. 저장된 검증 결과를 확인하세요.')
         st.download_button('최종·기존 포트폴리오 CSV',
                            data=df.to_csv(index=False).encode('utf-8-sig'),
                            file_name=f'portfolio_{r["buy_date"]}.csv',mime='text/csv')
@@ -229,6 +234,9 @@ with portfolio:
                            '엄격히 역전된 건수입니다. 동점은 추월로 계산하지 않으며 '
                            '최종 비중의 원인 분해를 의미하지 않습니다.')
         st.markdown(r['explanation'])
+        if r.get('verification'):
+            with st.expander('설명 검증 상세 (주장별 판정·근거)'):
+                st.json(r['verification'], expanded=False)
         st.download_button('설명 TXT',data=r['explanation'].encode('utf-8'),
                            file_name=f'explanation_{r["buy_date"]}.txt')
         with st.expander('분석에 실제 사용한 컴팩트 리포트'):
@@ -382,10 +390,13 @@ with refresh_tab:
         st.subheader(f'리포트 반영 포트폴리오 · 매수일 {latest_buy}')
         st.caption('직전 거래일 종가 신호 → 선택한 매수일 시가 신규 1슬리브 목표비중. '
                    '선택한 LLM은 근거 구조화 담당, 투자비중은 STABLE + BL/CVaR 엔진이 계산합니다.')
+        refresh_held = st.checkbox('실제 편입 종목만 보기 (최종 비중 0% 제외)', value=True,
+                                   key='refresh_holdings_only')
+        st.dataframe(pd.DataFrame(eng.display_portfolio_rows(
+            latest_port['comparison'], held_only=refresh_held)),
+            hide_index=True, use_container_width=True)
+        st.caption('백분율은 소수점 둘째 자리 표시이며 원본 CSV는 계산 정밀도를 유지합니다.')
         port_df = pd.DataFrame(latest_port['comparison']).sort_values('after_weight', ascending=False)
-        st.dataframe(port_df[['stock_code', 'company', 'before_rank', 'after_rank',
-                              'before_weight', 'after_weight', 'weight_change']],
-                     hide_index=True, use_container_width=True)
         st.download_button('리포트 반영 포트폴리오 CSV',
                            data=port_df.to_csv(index=False).encode('utf-8-sig'),
                            file_name=f'report_portfolio_{latest_buy}.csv', mime='text/csv')
@@ -399,4 +410,6 @@ with refresh_tab:
                                        'passed_peers_count', 'passed_by_peers_count',
                                        'report_available']],
                              hide_index=True, use_container_width=True)
+            verification = latest_port.get('verification', {})
+            st.caption('설명 검증 상태: ' + verification.get('status', '알 수 없음'))
             st.markdown(latest_port['explanation'])
