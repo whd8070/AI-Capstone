@@ -61,6 +61,33 @@ class DisplayTests(unittest.TestCase):
         self.assertEqual(verification.local_status(report)["status"], "LOCAL_RULE_ONLY")
 
 
+class LatencyRegressionTests(unittest.TestCase):
+    def test_ai_regeneration_reuses_existing_portfolio_without_inference(self):
+        import tempfile
+        from pathlib import Path
+        source = {
+            'comparison': [example()], 'compact': [],
+            'decision_date': '2026-01-08', 'buy_date': '2026-01-09',
+        }
+        verified = {
+            'explanation': explanation(), 'agent_used': 'codex',
+            'agent_warning': None, 'analysis_facts': {'holdings': []},
+            'verification': {'status': 'PASS', 'claim_count': 5},
+        }
+        with tempfile.TemporaryDirectory() as folder:
+            source['path'] = Path(folder)
+            with patch.object(engine, 'build_portfolio_explanation',
+                              return_value=verified) as builder, \
+                 patch('kr_pair_cpu.load_market', side_effect=AssertionError('must not re-fetch')), \
+                 patch('kr_pair_cpu.load_model', side_effect=AssertionError('must not reload')):
+                output = engine.regenerate_portfolio_explanation(source, 'codex')
+            builder.assert_called_once()
+            self.assertEqual(output['agent_used'], 'codex')
+            self.assertEqual((Path(folder) / 'explanation.txt').read_text('utf-8'),
+                             verified['explanation'])
+            self.assertEqual(source['comparison'], output['comparison'])
+
+
 class VerificationTests(unittest.TestCase):
     def setUp(self):
         self.facts = {"holdings": [{"stock_code": "005930"}],
