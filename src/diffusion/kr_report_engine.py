@@ -624,6 +624,27 @@ def local_explanation(signal_result, report_records, *, limit=None):
     return "\n\n".join(lines)
 
 
+def display_portfolio_rows(comparison, *, held_only=True):
+    """Web-only formatted data; raw optimizer weights are never rounded in storage."""
+    result = []
+    for r in sorted(comparison, key=lambda x: -float(x['after_weight'])):
+        if held_only and float(r['after_weight']) <= 1e-10:
+            continue
+        result.append({
+            '종목코드': str(r['stock_code']),
+            '기업': r['company'],
+            '반영 전 순위': int(r['before_rank']),
+            '반영 후 순위': int(r['after_rank']),
+            '반영 전 비중': f"{100*float(r['before_weight']):.2f}%",
+            '반영 후 비중': f"{100*float(r['after_weight']):.2f}%",
+            '비중 변화': f"{100*float(r['weight_change']):+.2f}%p",
+            '리포트 날짜': r.get('report_date') or '없음',
+            '목표가 괴리율': (f"{100*float(r['implied_upside']):+.2f}%"
+                              if r.get('implied_upside') is not None else '없음'),
+        })
+    return result
+
+
 def portfolio_for_buy_date(project, buy_date, *, pair_share=.5, report_share=.5,
                            K=128, seed=0, batch=128, threads=4, fetch=True, force=False,
                            require_repair=False, agent='local'):
