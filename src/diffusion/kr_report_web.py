@@ -179,13 +179,17 @@ with portfolio:
     st.caption('이 페이지의 날짜는 신호 생성일이 아니라 매수일입니다. '
                '시세 캘린더에서 전 거래일을 찾아 해당 종가까지만 순위를 계산합니다.')
     if st.button('포트폴리오 생성 (수치 먼저 표시)', type='primary', key='portfolio_run'):
-        with st.spinner('시세·기존 캐시 확인 → STABLE 추론 → 위험 최적화 및 근거 준비'):
+        with st.status('포트폴리오 계산 시작', expanded=True) as status:
+            stage = st.empty()
             try:
                 st.session_state['kr_report_portfolio'] = eng.portfolio_for_buy_date(
                     PROJECT, buy_date, pair_share=pair, report_share=report,
                     K=int(k), seed=int(seed), threads=int(threads), fetch=fetch,
-                    agent='local')
+                    agent='local', progress=lambda message: stage.info(message))
+                status.update(label='수치 포트폴리오 준비 완료', state='complete',
+                              expanded=False)
             except Exception as exc:
+                status.update(label='포트폴리오 계산 오류', state='error')
                 st.exception(exc)
     current_portfolio = st.session_state.get('kr_report_portfolio')
     if current_portfolio is not None and explanation_agent != 'local':
@@ -210,6 +214,13 @@ with portfolio:
         st.success(f'신호일 {r["decision_date"]} 종가 → 매수일 {r["buy_date"]} 시가 · 유효 리포트 {r["report_coverage"]}개 종목')
         st.caption(f'결과 저장: {r["path"]} (사전 비중/순위, 사후 비중/순위, 필요한 컴팩트 리포트, 해설)')
         st.caption('해설 생성: '+display_agent(r.get('agent_used', 'local')))
+        elapsed = r.get('stage_seconds')
+        if elapsed:
+            with st.expander(f"계산 단계별 시간 (총 {elapsed.get('total', 0):.2f}초)"):
+                st.dataframe(pd.DataFrame([
+                    {'단계': name, '초': f'{seconds:.2f}'}
+                    for name, seconds in elapsed.items()
+                ]), hide_index=True, use_container_width=True)
         if r.get('agent_warning'):
             st.warning(r['agent_warning'])
         held_only = st.checkbox('실제 편입 종목만 보기 (최종 비중 0% 제외)', value=True,
