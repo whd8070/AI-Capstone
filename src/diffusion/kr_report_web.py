@@ -223,16 +223,23 @@ with portfolio:
         st.dataframe(pd.DataFrame(view),hide_index=True,use_container_width=True)
         st.caption('O 모델이 생성한 20영업일 시나리오의 경험적 통계입니다. 확률 보정·수익 예측력을 검증한 투자 전망은 아닙니다.')
         st.subheader('투자비중 변화 근거 및 모델 시나리오 해석')
-        with st.expander('검증 가능한 횡단면 점수·경쟁 종목 추월 근거', expanded=False):
-            evidence = pd.DataFrame(r.get('analysis_facts', {}).get('rank_evidence', []))
-            if not evidence.empty:
-                keys = ['company', 'rank_before', 'rank_after', 'base_rank_score',
-                        'report_rank_score', 'final_rank_score', 'passed_peers_count',
-                        'passed_by_peers_count', 'report_available']
-                st.dataframe(evidence[keys], hide_index=True, use_container_width=True)
-                st.caption('추월 건수는 REPORT 반영 전후 두 종목의 상대 점수 순서가 '
-                           '엄격히 역전된 건수입니다. 동점은 추월로 계산하지 않으며 '
-                           '최종 비중의 원인 분해를 의미하지 않습니다.')
+        with st.expander('실제 편입 종목별 상대 순위·비중 근거', expanded=False):
+            items = r.get('analysis_facts', {}).get('holdings', [])
+            if items:
+                audit_rows = []
+                for item in items:
+                    audit_rows.append({
+                        '기업': item['company'],
+                        '원래 순위': item['rank_before'],
+                        '최종 순위': item['rank_after'],
+                        'REPORT 점수': item['report_rank_score'],
+                        '최종 비중': item['weight_after_pct'],
+                        '추월': item['passed_peers_count'],
+                        '역전당함': item['passed_by_peers_count'],
+                        '리포트': '있음' if item['report_available'] else '없음',
+                    })
+                st.dataframe(pd.DataFrame(audit_rows), hide_index=True, use_container_width=True)
+                st.caption('추월은 상대 점수 역전이며 비중 변화의 인과적 기여도를 뜻하지 않습니다.')
         st.markdown(r['explanation'])
         if r.get('verification'):
             with st.expander('설명 검증 상세 (주장별 판정·근거)'):
@@ -404,12 +411,14 @@ with refresh_tab:
             st.warning(latest_port['agent_warning'])
         with st.expander('투자비중 변화 및 위험 설명'):
             st.caption('해설 생성: '+display_agent(latest_port.get('agent_used', 'local')))
-            evidence = pd.DataFrame(latest_port.get('analysis_facts', {}).get('rank_evidence', []))
-            if not evidence.empty:
-                st.dataframe(evidence[['company', 'rank_before', 'rank_after',
-                                       'passed_peers_count', 'passed_by_peers_count',
-                                       'report_available']],
-                             hide_index=True, use_container_width=True)
+            items = latest_port.get('analysis_facts', {}).get('holdings', [])
+            if items:
+                st.dataframe(pd.DataFrame([{
+                    '기업': x['company'], '원래 순위': x['rank_before'],
+                    '최종 순위': x['rank_after'], '최종 비중': x['weight_after_pct'],
+                    '추월': x['passed_peers_count'],
+                    '리포트': '있음' if x['report_available'] else '없음'
+                } for x in items]), hide_index=True, use_container_width=True)
             verification = latest_port.get('verification', {})
             st.caption('설명 검증 상태: ' + verification.get('status', '알 수 없음'))
             st.markdown(latest_port['explanation'])
