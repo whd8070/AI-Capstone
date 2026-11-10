@@ -145,12 +145,16 @@ def verify(markdown: str, facts: dict, *, backend: str, runner=None) -> dict:
         allowed_refs = evidence_ids(facts)
         if len(found_ids) != len(expected_ids) or set(found_ids) != expected_ids:
             audit["errors"].append("INCOMPLETE_OR_DUPLICATED_CLAIM_VERDICTS")
+        claim_text_by_id = {c["claim_id"]: c["text"] for c in claims}
         for v in returned:
             refs = v.get("evidence_refs", [])
             if v.get("verdict") not in ("pass", "warn") or not refs:
                 audit["errors"].append("REJECTED_OR_UNGROUNDED:" + str(v.get("claim_id")))
             if any(x not in allowed_refs for x in refs):
                 audit["errors"].append("UNKNOWN_EVIDENCE:" + str(v.get("claim_id")))
+            para = claim_text_by_id.get(v.get("claim_id"), "")
+            if refs and not any(f"({ref})" in para or f"[{ref}]" in para for ref in refs):
+                audit["errors"].append("EVIDENCE_NOT_CITED_IN_PARAGRAPH:" + str(v.get("claim_id")))
             if v.get("verdict") == "warn" and not v.get("reason_code"):
                 audit["errors"].append("UNEXPLAINED_WARN:" + str(v.get("claim_id")))
         audit["claims"] = returned
