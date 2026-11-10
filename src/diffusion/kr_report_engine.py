@@ -65,6 +65,38 @@ def load_consensus(project):
     return df.sort_values(['stock_code', 'date']).reset_index(drop=True)
 
 
+def load_universe_company_names(project):
+    """Canonical 44-stock names, independent of whether broker reports exist.
+
+    Missing universe mapping is tolerated for lightweight test fixtures. The
+    production project maintains these names in agents/collection/universe.json.
+    """
+    root = Path(project).resolve().parents[1]
+    path = root / 'agents' / 'collection' / 'universe.json'
+    if not path.is_file():
+        return {}
+    raw = json.loads(path.read_text(encoding='utf-8-sig'))
+    if not isinstance(raw, dict):
+        raise ValueError(f'Expected stock-name mapping object in {path}')
+    return {str(code).zfill(6): str(name).strip()
+            for code, name in raw.items()
+            if isinstance(name, str) and name.strip()}
+
+
+def resolve_company_name(code, *, canonical=None, report_name=None, consensus_name=None):
+    """Never substitute a stock code for an existing canonical company name."""
+    code = str(code).zfill(6)
+    def usable(value):
+        if value is None or pd.isna(value):
+            return False
+        text = str(value).strip()
+        return bool(text) and text != code and text.lower() not in ('nan', 'none')
+    for value in (canonical, report_name, consensus_name):
+        if usable(value):
+            return str(value).strip()
+    return code
+
+
 def report_view(consensus, names, decision_date, buy_date, raw_close, *, max_age=WINDOW_DAYS):
     """Compute cross-section REPORT rank, neutral for uncovered stocks.
 
@@ -206,11 +238,17 @@ def signal(market, features, model_data, decision_date, buy_date, consensus, *,
     scenario_before = scenario_summary(before_w)
     scenario_after = scenario_summary(after_w)
     rank0, rank1 = _ranks(before_score, market.names), _ranks(after_score, market.names)
-    full_company_map = {str(c).zfill(6): v for c,v in zip(consensus['stock_code'],consensus.get('company',consensus['stock_code']))}
+    full_company_map = {str(c).zfill(6): v for c, v in
+                        zip(consensus['stock_code'],
+                            consensus['company'] if 'company' in consensus else consensus['stock_code'])}
+    universe_names = load_universe_company_names(market.project)
     comparison = []
     for i, n in enumerate(market.names):
         r = report_details[n]
-        comparison.append(dict(stock_code=n, company=r['report_company'] or full_company_map.get(n, n),
+        company = resolve_company_name(n, canonical=universe_names.get(n),
+                                       report_name=r['report_company'],
+                                       consensus_name=full_company_map.get(n))
+        comparison.append(dict(stock_code=n, company=company,
                                mom_rank_score=float(mom_z[i]), pair_rank_score=float(pair_z[i]),
                                report_rank_score=float(report_z[i]),
                                before_signal_score=float(before_score[i]),
