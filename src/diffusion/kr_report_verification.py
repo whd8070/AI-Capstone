@@ -93,6 +93,71 @@ def _claude_verify(prompt: str, schema: dict[str, Any]) -> dict[str, Any]:
     return envelope["structured_output"]
 
 
+def compact_agent_facts(facts: dict) -> dict:
+    """Compact only the LLM transport, never the recorded evidence or allocations.
+
+    Every held stock remains present. Keep two latest source reports per stock,
+    with quote-verified claim summaries already produced by the collection agent.
+    Unused predictions, raw score matrices, other stocks and repetitive fields
+    are not sent to the LLM. Both writer and reviewer see exactly the same subset.
+    """
+    held = list(facts.get("holdings", []))
+    codes = {str(h.get("stock_code", "")).zfill(6) for h in held}
+    slim_holdings = []
+    keep = (
+        "stock_code", "company", "rank_before", "rank_after",
+        "weight_before_pct", "weight_after_pct", "weight_change_pp",
+        "base_rank_score", "report_rank_score", "final_rank_score",
+        "report_available", "report_date", "report_upside_pct",
+        "passed_peers_count", "passed_by_peers_count",
+    )
+    for h in held:
+        h2 = {k: h[k] for k in keep if k in h}
+        h2["passed_peers_examples"] = [
+            {"company": p.get("company"), "stock_code": p.get("stock_code")}
+            for p in h.get("passed_peers_examples", [])[:2]
+        ]
+        h2["passed_by_peers_examples"] = [
+            {"company": p.get("company"), "stock_code": p.get("stock_code")}
+            for p in h.get("passed_by_peers_examples", [])[:2]
+        ]
+        slim_holdings.append(h2)
+    reports = []
+    seen = {}
+    # Original compact records are ordered most-recent-first by compact_records.
+    for doc in sorted(facts.get("report_records", []),
+                      key=lambda r: (str(r.get("date", "")), str(r.get("nid", ""))),
+                      reverse=True):
+        code = str(doc.get("stock_code", "")).zfill(6)
+        if code not in codes or seen.get(code, 0) >= 2:
+            continue
+        seen[code] = seen.get(code, 0) + 1
+        def citations(key, limit):
+            return [{"claim": str(x["claim"]), "page": x.get("page")}
+                    for x in doc.get(key, []) if x.get("claim")][:limit]
+        reports.append({
+            "nid": doc.get("nid"), "date": doc.get("date"),
+            "stock_code": code, "broker": doc.get("broker"),
+            "opinion": doc.get("opinion"), "target_price": doc.get("target_price"),
+            "rationale": citations("rationale", 2),
+            "risks": citations("risks", 2),
+        })
+    return {
+        "decision_date": facts.get("decision_date"),
+        "buy_date": facts.get("buy_date"),
+        "pair_share_pct": facts.get("pair_share_pct"),
+        "report_share_pct": facts.get("report_share_pct"),
+        "report_coverage": facts.get("report_coverage"),
+        "universe_size": facts.get("universe_size"),
+        "holding_count": len(slim_holdings),
+        "signal_definition": facts.get("signal_definition"),
+        "holdings": slim_holdings,
+        "scenario": facts.get("scenario"),
+        "report_records": reports,
+        "important_limitations": facts.get("important_limitations", []),
+    }
+
+
 def model_verdicts(backend: str, markdown: str, facts: dict, claims: list[dict]) -> dict:
     """Run a separate read-only LLM review. Input is data, never execution instructions."""
     from kr_report_collection import codex_status, claude_status, load_codex_backend
@@ -115,8 +180,10 @@ def model_verdicts(backend: str, markdown: str, facts: dict, claims: list[dict])
         "evidence_refs는 허용 목록의 실제 근거 ID만 쓰고, 근거 없는 주장에 임의 ID를 붙이지 말라. "
         "비율과 소수점은 두 자리까지 허용하되 사소한 정상 반올림은 인정하라.\n"
         "<UNTRUSTED_JSON>\n" +
-        json.dumps({"claims": claims, "facts": facts, "allowed_evidence_refs": allowed,
-                    "full_report_sha256": digest(markdown)}, ensure_ascii=False, default=str) +
+        json.dumps({"claims": claims, "facts": compact_agent_facts(facts),
+                    "allowed_evidence_refs": allowed,
+                    "full_report_sha256": digest(markdown)},
+                   ensure_ascii=False, separators=(",", ":"), default=str) +
         "\n</UNTRUSTED_JSON>"
     )
     if backend == "codex":
