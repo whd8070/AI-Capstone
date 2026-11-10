@@ -88,6 +88,46 @@ class LatencyRegressionTests(unittest.TestCase):
             self.assertEqual(source['comparison'], output['comparison'])
 
 
+class CompactInputTests(unittest.TestCase):
+    def test_all_holdings_remain_but_unneeded_report_details_are_removed(self):
+        facts = {
+            'decision_date': '2026-01-08', 'buy_date': '2026-01-09',
+            'pair_share_pct': '50.00%', 'report_share_pct': '50.00%',
+            'holdings': [
+                {'stock_code': '005930', 'company': '첫 종목', 'weight_after_pct': '12.34%',
+                 'rank_before': 1, 'rank_after': 2, 'report_available': True,
+                 'passed_peers_examples': [{'company': '이웃A', 'stock_code': '000001'},
+                                            {'company': '이웃B', 'stock_code': '000002'},
+                                            {'company': '이웃C', 'stock_code': '000003'}]},
+                {'stock_code': '000660', 'company': '두 번째 종목',
+                 'weight_after_pct': '8.76%', 'report_available': False},
+            ],
+            'report_records': [
+                {'nid': str(k), 'stock_code': '005930', 'date': f'2026-01-0{k}',
+                 'broker': f'증권사{k}', 'target_price': 100000,
+                 'rationale': [{'claim': f'근거{i}', 'page': i} for i in range(10)],
+                 'risks': [{'claim': f'위험{i}', 'page': i} for i in range(10)],
+                 'earnings_forecast': [{'very_large': 'x' * 10000}]}
+                for k in range(1, 5)
+            ],
+            'all_stock_ranks': [{'stock_code': str(k), 'rank_after': k}
+                                for k in range(44)],
+            'scenario': {'after': {'mean_pct': '1.23%'}},
+        }
+        condensed = verification.compact_agent_facts(facts)
+        self.assertEqual(len(condensed['holdings']), 2)
+        self.assertEqual(len(condensed['report_records']), 2)
+        self.assertEqual(len(condensed['report_records'][0]['rationale']), 2)
+        self.assertEqual(len(condensed['report_records'][0]['risks']), 2)
+        self.assertEqual(len(condensed['holdings'][0]['passed_peers_examples']), 2)
+        self.assertNotIn('all_stock_ranks', condensed)
+        self.assertNotIn('earnings_forecast', condensed['report_records'][0])
+        self.assertEqual(condensed['holdings'][0]['weight_after_pct'], '12.34%')
+        self.assertEqual(condensed['holdings'][1]['report_available'], False)
+        import json
+        self.assertLess(len(json.dumps(condensed)), len(json.dumps(facts)) / 3)
+
+
 class VerificationTests(unittest.TestCase):
     def setUp(self):
         self.facts = {"holdings": [{"stock_code": "005930"}],
