@@ -9,6 +9,7 @@ import csv
 import datetime as dt
 import hashlib
 import json
+import re
 import math
 import os
 import time
@@ -576,6 +577,10 @@ def local_explanation(signal_result, report_records, *, limit=None):
         lines.append("")
     lines += ["## 리포트 근거",
               "리포트의 목표주가는 통상 장기 전망이며 20거래일의 실현 수익률로 해석하지 않습니다."]
+    def excerpt(text):
+        # Numeric report prose is display-only; original extracted facts stay untouched.
+        return re.sub(r'(?<![\\w])[-+]?\\d+\\.\\d{3,}(?!\\d)',
+                      lambda m: f"{float(m.group()):.2f}", str(text))
     for r in rows:
         code = r['stock_code']
         reports = by_stock.get(code, [])
@@ -592,10 +597,10 @@ def local_explanation(signal_result, report_records, *, limit=None):
             ref = f"report:{doc.get('nid')}" if doc.get('nid') is not None else f"rank:{code}"
             claims = [x.get('claim') for x in doc.get('rationale', []) if x.get('claim')]
             risks = [x.get('claim') for x in doc.get('risks', []) if x.get('claim')]
-            lines.append(f"{doc.get('broker','증권사')} ({doc.get('date','기준일 미상')}) "
-                         + ("주요 근거: " + "; ".join(claims[:2]) if claims
+            lines.append(f"{doc.get('broker') or '증권사'} ({doc.get('date') or '기준일 미상'}) "
+                         + ("주요 근거: " + "; ".join(excerpt(v) for v in claims[:2]) if claims
                             else "검증된 투자 근거 항목이 없습니다.") + f" ({ref})")
-            lines.append(("반대 위험: " + "; ".join(risks[:2]) if risks
+            lines.append(("반대 위험: " + "; ".join(excerpt(v) for v in risks[:2]) if risks
                           else "추출 기록에 검증된 위험 항목이 없지만, 위험이 없음을 의미하지 않습니다.")
                          + f" ({ref})")
     lines += [
