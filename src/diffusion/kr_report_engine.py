@@ -503,7 +503,9 @@ EXPLANATION_INSTRUCTIONS = (
     '리포트가 없는 종목은 자료 없음과 중앙값 중립 처리를 명시하고 장점/위험을 꾸미지 않는다. '
     '숫자는 입력의 표시 문자열을 그대로 사용하며 모든 소수는 소수점 둘째 자리까지만 사용하라. '
     '비중은 반드시 백분율(%), 비중 차이는 %p를 사용한다. 점수는 기대수익률(%)이 아니라 상대 점수다. '
-    '각 기업 설명에 rank:종목코드를, 시나리오 설명에는 scenario를 근거 ID로 표시하라. '
+    '각 문단마다 확인 가능한 근거 ID를 명시하라. 전체 설정은 (settings), 실제 계산 비중은 (portfolio), '
+    '위험관리 일반 설명은 (risk), 기업별 계산은 (rank:종목코드), 출처 근거는 (report:nid), '
+    '시나리오는 (scenario)처럼 표기한다. 증거 없는 문단은 쓰지 말라. '
     '비중 결정이 전체 종목 공분산/BL/CVaR 공동 최적화 결과라는 점과 순위·비중 사이의 차이를 설명하라. '
     '특정 뉴스·리포트·위험 제약이 단독으로 비중을 바꿨다고 주장하려면 별도 반사실적 재계산이 필요한데 '
     '이번 입력에는 없으므로 단정할 수 없음을 명시한다. '
@@ -511,13 +513,13 @@ EXPLANATION_INSTRUCTIONS = (
     '외부 검색·추측 없이 오직 JSON에 주어진 사실만 사용하고 주어진 비중·순위를 절대 변경하지 않는다.'
 )
 
-def claude_explanation(facts, *, timeout=240):
+def claude_explanation(facts, *, timeout=240, instructions=None):
     """User-authenticated Claude CLI explains fixed calculation facts only."""
     from kr_report_collection import claude_executable, claude_env
     exe = claude_executable()
     if not exe:
         raise RuntimeError('Claude CLI를 찾지 못했습니다. 리포트 수집 탭의 CLI 안내를 확인하세요.')
-    prompt = EXPLANATION_INSTRUCTIONS + '\n\n<FACTS_JSON>\n' + json.dumps(
+    prompt = (instructions or EXPLANATION_INSTRUCTIONS) + '\n\n<FACTS_JSON>\n' + json.dumps(
         facts, ensure_ascii=False, default=_jsonable, allow_nan=False) + '\n</FACTS_JSON>'
     result = subprocess.run([exe, '-p', '--tools', '', '--output-format', 'text'],
                             input=prompt, text=True, encoding='utf-8',
@@ -528,7 +530,7 @@ def claude_explanation(facts, *, timeout=240):
     return result.stdout.strip()
 
 
-def llm_explanation(signal_result, report_records, agent):
+def llm_explanation(signal_result, report_records, agent, *, feedback=''):
     """No model can choose stock weights; both receive the identical facts."""
     if agent not in ('codex', 'claude'):
         raise ValueError('LLM agent must be codex or claude')
@@ -537,9 +539,10 @@ def llm_explanation(signal_result, report_records, agent):
     if not state['ready']:
         raise RuntimeError(state['message'])
     facts = explanation_facts(signal_result, report_records)
+    instructions = EXPLANATION_INSTRUCTIONS + ('\n직전 검증 실패 사유를 모두 수정하여 전체 보고서를 다시 작성하라: ' + feedback[:1200] if feedback else '')
     if agent == 'claude':
-        return claude_explanation(facts), facts
-    return load_codex_backend().codex_explanation(facts, instructions=EXPLANATION_INSTRUCTIONS), facts
+        return claude_explanation(facts, instructions=instructions), facts
+    return load_codex_backend().codex_explanation(facts, instructions=instructions), facts
 
 
 def local_explanation(signal_result, report_records, *, limit=None):
@@ -686,7 +689,8 @@ def portfolio_for_buy_date(project, buy_date, *, pair_share=.5, report_share=.5,
         # At most two revisions/re-generations, with full report re-verification.
         for attempt in range(3):
             try:
-                draft, _ = llm_explanation(result, compact, agent)
+                draft, _ = llm_explanation(result, compact, agent,
+                                           feedback=last_error or '')
                 checked = verify(draft, analysis_facts, backend=agent)
                 if checked['status'] == 'PASS':
                     explanation = draft
