@@ -579,7 +579,7 @@ def local_explanation(signal_result, report_records, *, limit=None):
               "리포트의 목표주가는 통상 장기 전망이며 20거래일의 실현 수익률로 해석하지 않습니다."]
     def excerpt(text):
         # Numeric report prose is display-only; original extracted facts stay untouched.
-        return re.sub(r'(?<![\\w])[-+]?\\d+\\.\\d{3,}(?!\\d)',
+        return re.sub(r'(?<![\w])[-+]?\d+\.\d{3,}(?!\d)',
                       lambda m: f"{float(m.group()):.2f}", str(text))
     for r in rows:
         code = r['stock_code']
