@@ -219,7 +219,7 @@ with portfolio:
                          '생성 평균':f"{s['mean_20d']*100:+.2f}%",
                          '중앙값':f"{s['median_20d']*100:+.2f}%",
                          '5% 분위':f"{s['q05_20d']*100:+.2f}%",
-                         '음수 시나리오 비율':f"{s['simulated_loss_frequency']*100:.1f}%"})
+                         '음수 시나리오 비율':f"{s['simulated_loss_frequency']*100:.2f}%"})
         st.dataframe(pd.DataFrame(view),hide_index=True,use_container_width=True)
         st.caption('O 모델이 생성한 20영업일 시나리오의 경험적 통계입니다. 확률 보정·수익 예측력을 검증한 투자 전망은 아닙니다.')
         st.subheader('투자비중 변화 근거 및 모델 시나리오 해석')
