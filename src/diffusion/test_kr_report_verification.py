@@ -26,6 +26,27 @@ def explanation():
     )
 
 
+class CompanyNameTests(unittest.TestCase):
+    def test_reportless_042700_resolves_to_hanmi_semiconductor(self):
+        from pathlib import Path
+        names = engine.load_universe_company_names(Path(engine.__file__).resolve().parent)
+        self.assertEqual(names['042700'], '한미반도체')
+        self.assertEqual(engine.resolve_company_name(
+            '042700', canonical=names.get('042700'),
+            report_name=None, consensus_name='042700'), '한미반도체')
+
+    def test_canonical_name_overrides_missing_or_stale_report_names(self):
+        self.assertEqual(engine.resolve_company_name(
+            '042700', canonical='한미반도체',
+            report_name='042700', consensus_name='잘못된 이전 이름'), '한미반도체')
+        self.assertEqual(engine.resolve_company_name(
+            '005930', canonical=None, report_name='삼성전자',
+            consensus_name='005930'), '삼성전자')
+        self.assertEqual(engine.resolve_company_name(
+            '000001', canonical=None, report_name=None,
+            consensus_name=None), '000001')
+
+
 class DisplayTests(unittest.TestCase):
     def test_held_only_and_pct_precision(self):
         a = example()
