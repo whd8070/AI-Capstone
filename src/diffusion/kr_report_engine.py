@@ -721,15 +721,28 @@ def regenerate_portfolio_explanation(result, agent, *, progress=None):
 
 def portfolio_for_buy_date(project, buy_date, *, pair_share=.5, report_share=.5,
                            K=128, seed=0, batch=128, threads=4, fetch=True, force=False,
-                           require_repair=False, agent='local'):
+                           require_repair=False, agent='local', progress=None):
     import kr_pair_cpu as kr
     project = Path(project).resolve()
+    start_perf = time.perf_counter()
+    step_perf = start_perf
+    timings = {}
+    def step(stage, label):
+        nonlocal step_perf
+        now = time.perf_counter()
+        timings[stage] = round(now - step_perf, 2)
+        step_perf = now
+        if progress:
+            progress(f'{label} · {timings[stage]:.2f}초')
+    if progress:
+        progress('시세·거래일 데이터 확인 중')
     buy = pd.Timestamp(buy_date).normalize()
     if buy.date() > kr.now_kst().date():
         raise ValueError('For historical buy dates only; future KRX opening dates are not observed')
     # Existing KRX calendar from the real 44-stock close, *not* a guessed business-day offset.
     lookback_start = buy - pd.Timedelta(days=28)
     market = kr.load_market(project, buy, fetch=fetch, force=force, need_open_start=lookback_start)
+    step('market', '시세 준비 완료')
     days = market.close.index
     if buy not in days:
         raise ValueError('Selected buy date is not an observed KRX trading session')
@@ -737,17 +750,26 @@ def portfolio_for_buy_date(project, buy_date, *, pair_share=.5, report_share=.5,
     if loc == 0:
         raise ValueError('No previous KRX trading session')
     decision = days[loc-1]
+    if progress:
+        progress('피처 구성·모델 로딩 중')
     features = kr.FeatureStore(market, persist_daily=True)
     model = kr.load_model(project, threads=threads)
+    step('model', '모델·피처 준비 완료')
+    if progress:
+        progress('K=128 시나리오와 위험 최적화 계산 중')
     result = signal(market, features, model, decision, buy, load_consensus(project),
                     pair_share=pair_share, report_share=report_share,
                     K=K, seed=seed, batch=batch, require_repair=require_repair)
+    step('inference_and_optimization', '디퓨전·위험 최적화 완료')
+    if progress:
+        progress('리포트 근거 정리·로컬 해설 중')
     # Compact records are generated locally ONLY for holdings or materially changed names.
     focus = sorted(result['comparison'],
                    key=lambda x:max(x['after_weight'], x['before_weight'], abs(x['weight_change'])),
                    reverse=True)[:15]
     compact = compact_records(project, decision, buy, [x['stock_code'] for x in focus])
     details = build_portfolio_explanation(result, compact, agent)
+    step('explanation', '근거 정리·로컬 해설 완료')
     explanation = details['explanation']
     agent_used = details['agent_used']
     warning = details['agent_warning']
@@ -765,6 +787,8 @@ def portfolio_for_buy_date(project, buy_date, *, pair_share=.5, report_share=.5,
                                               'verification_status':verification['status']})
     write_json(dest/'verification.json', verification)
     write_json(dest/'signal.json', {k:v for k,v in result.items() if k not in ('before_weights','after_weights')})
+    timings['total'] = round(time.perf_counter() - start_perf, 2)
+    result.update(stage_seconds=timings)
     result.update(path=dest, compact=compact, explanation=explanation,
                   agent_used=agent_used, agent_warning=warning, analysis_facts=analysis_facts,
                   verification=verification)
