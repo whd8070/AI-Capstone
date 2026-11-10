@@ -169,23 +169,42 @@ with portfolio:
         '포트폴리오 설명 방식', options=available_explain,
         format_func=display_agent, key='portfolio_explain_agent')
     if explanation_agent != 'local':
-        st.caption('투자비중은 기존 STABLE·BL/CVaR 엔진이 계산합니다. '
-                   '선택한 CLI는 상대 순위 변화와 리포트 근거·남는 위험만 해설합니다.')
+        st.caption('먼저 수치 포트폴리오와 로컬 설명을 표시합니다. '
+                   '이후 별도 버튼으로 선택한 CLI 설명·독립 검증을 수행합니다. '
+                   'AI 재설명은 STABLE 추론·위험 최적화를 다시 실행하지 않습니다.')
     elif len(available_explain) == 1:
         st.caption('연결된 Claude/Codex CLI가 없어 로컬 해설을 표시합니다. '
                    '3번째 페이지에서 CLI 설치·로그인을 확인할 수 있습니다.')
     st.info('표시되는 목표비중은 **해당 매수일에 신규 투입/교체할 1개 슬리브 내부의 비중**입니다. 기존 19개 슬리브를 포함한 전체 계좌 보유비중이 아닙니다.')
     st.caption('이 페이지의 날짜는 신호 생성일이 아니라 매수일입니다. '
                '시세 캘린더에서 전 거래일을 찾아 해당 종가까지만 순위를 계산합니다.')
-    if st.button('포트폴리오 생성', type='primary', key='portfolio_run'):
-        with st.spinner('전 거래일 시세 갱신 · STABLE 추론 · REPORT 결합 · 컴팩트 근거 생성 중'):
+    if st.button('포트폴리오 생성 (수치 먼저 표시)', type='primary', key='portfolio_run'):
+        with st.spinner('시세·기존 캐시 확인 → STABLE 추론 → 위험 최적화 및 근거 준비'):
             try:
                 st.session_state['kr_report_portfolio'] = eng.portfolio_for_buy_date(
                     PROJECT, buy_date, pair_share=pair, report_share=report,
                     K=int(k), seed=int(seed), threads=int(threads), fetch=fetch,
-                    agent=explanation_agent)
+                    agent='local')
             except Exception as exc:
                 st.exception(exc)
+    current_portfolio = st.session_state.get('kr_report_portfolio')
+    if current_portfolio is not None and explanation_agent != 'local':
+        if st.button('AI 설명 생성·독립 검증 (모델 추론 재실행 없음)',
+                     key='portfolio_ai_explain'):
+            with st.status('선택한 에이전트로 설명 및 검증', expanded=True) as status:
+                progress_line = st.empty()
+                try:
+                    updated = eng.regenerate_portfolio_explanation(
+                        current_portfolio, explanation_agent,
+                        progress=lambda message: progress_line.info(message))
+                    st.session_state['kr_report_portfolio'] = updated
+                    if updated.get('agent_used') == explanation_agent:
+                        status.update(label='AI 설명·검증 완료', state='complete')
+                    else:
+                        status.update(label='AI 검증 불합격 · 로컬 설명으로 대체', state='error')
+                except Exception as exc:
+                    status.update(label='AI 설명 처리 실패 · 이전 결과 유지', state='error')
+                    st.exception(exc)
     if 'kr_report_portfolio' in st.session_state:
         r=st.session_state['kr_report_portfolio']
         st.success(f'신호일 {r["decision_date"]} 종가 → 매수일 {r["buy_date"]} 시가 · 유효 리포트 {r["report_coverage"]}개 종목')
@@ -208,8 +227,9 @@ with portfolio:
             st.info('로컬 설명: 구조·표시 규칙만 검사했습니다. 독립 LLM 의미 검증은 수행하지 않았습니다.')
         else:
             st.warning('설명 검증 상태를 확인하지 못했습니다. 저장된 검증 결과를 확인하세요.')
+        raw_portfolio_df = pd.DataFrame(r['comparison']).sort_values('after_weight', ascending=False)
         st.download_button('최종·기존 포트폴리오 CSV',
-                           data=df.to_csv(index=False).encode('utf-8-sig'),
+                           data=raw_portfolio_df.to_csv(index=False).encode('utf-8-sig'),
                            file_name=f'portfolio_{r["buy_date"]}.csv',mime='text/csv')
         st.subheader('동결 모델 O 생성 시나리오 (20거래일)')
         view=[]
@@ -375,8 +395,14 @@ with refresh_tab:
                     new_result = eng.portfolio_for_buy_date(
                         PROJECT, buy_for_refresh, pair_share=pair, report_share=report,
                         K=int(k), seed=int(seed), threads=int(threads), fetch=fetch,
-                        agent=explain_on_refresh)
+                        agent='local')
                     st.session_state['kr_report_portfolio'] = new_result
+                    if explain_on_refresh != 'local':
+                        progress('설명 에이전트', '수치 계산 완료 · 설명과 독립 검증 호출 중')
+                        new_result = eng.regenerate_portfolio_explanation(
+                            new_result, explain_on_refresh,
+                            progress=lambda msg: progress('검증', msg))
+                        st.session_state['kr_report_portfolio'] = new_result
                     st.session_state['refresh_portfolio_buy'] = str(new_result['buy_date'])
                     msg += f" · 포트폴리오 생성 완료: {new_result['path']}"
                 status_box.update(label='리포트 처리 완료', state='complete', expanded=False)
