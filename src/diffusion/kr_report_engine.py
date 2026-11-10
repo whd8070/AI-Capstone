@@ -653,6 +653,72 @@ def display_portfolio_rows(comparison, *, held_only=True):
     return result
 
 
+def build_portfolio_explanation(result, compact, agent, *, progress=None):
+    """Produce validated text only. Never repeat inference or change allocations."""
+    from kr_report_verification import verify, local_status
+    explanation = local_explanation(result, compact)
+    warning = None
+    agent_used = 'local'
+    analysis_facts = explanation_facts(result, compact)
+    verification = local_status(explanation)
+    if agent not in ('local', 'codex', 'claude'):
+        raise ValueError('agent must be local, codex or claude')
+    if agent != 'local':
+        last_error = None
+        for attempt in range(3):
+            try:
+                if progress:
+                    progress(f'설명 에이전트 호출 {attempt+1}/3')
+                draft, _ = llm_explanation(
+                    result, compact, agent, feedback=last_error or '')
+                if progress:
+                    progress(f'독립 검증 에이전트 호출 {attempt+1}/3')
+                checked = verify(draft, analysis_facts, backend=agent)
+                if checked['status'] == 'PASS':
+                    explanation = draft
+                    verification = checked
+                    agent_used = agent
+                    last_error = None
+                    break
+                last_error = '; '.join(checked['errors'][:4]) or '검증 실패'
+            except Exception as exc:
+                last_error = str(exc)
+                break
+        if agent_used == 'local':
+            warning = (f'{agent} 설명을 독립 검증으로 승인하지 못해 로컬 설명으로 대체합니다. '
+                       f'LLM 의미 검증 완료로 표시하지 않습니다: {last_error}')
+            verification = local_status(explanation, reason=warning)
+    if verification['status'] == 'FAIL':
+        raise RuntimeError('로컬 설명의 필수 구조/표시 검증 실패: ' +
+                           '; '.join(verification['errors']))
+    return dict(explanation=explanation, agent_used=agent_used,
+                agent_warning=warning, analysis_facts=analysis_facts,
+                verification=verification)
+
+
+def regenerate_portfolio_explanation(result, agent, *, progress=None):
+    """Re-explain a computed portfolio with zero market/model/optimizer calls."""
+    if not isinstance(result, dict) or not result.get('comparison') or not result.get('compact'):
+        # compact can be empty when no structured report exists: that is still valid.
+        if not isinstance(result, dict) or not result.get('comparison') or 'compact' not in result:
+            raise ValueError('A completed portfolio is required before running AI explanation')
+    if not result.get('path'):
+        raise ValueError('Portfolio result directory is missing')
+    updated = build_portfolio_explanation(result, result['compact'], agent,
+                                          progress=progress)
+    dest = Path(result['path'])
+    # A complete, verified report replaces the old one only after validation.
+    (dest/'explanation.txt').write_text(updated['explanation'], encoding='utf-8')
+    write_json(dest/'explanation_meta.json',
+               {'requested': agent, 'used': updated['agent_used'],
+                'warning': updated['agent_warning'],
+                'verification_status': updated['verification']['status']})
+    write_json(dest/'verification.json', updated['verification'])
+    revised = dict(result)
+    revised.update(updated)
+    return revised
+
+
 def portfolio_for_buy_date(project, buy_date, *, pair_share=.5, report_share=.5,
                            K=128, seed=0, batch=128, threads=4, fetch=True, force=False,
                            require_repair=False, agent='local'):
@@ -681,40 +747,12 @@ def portfolio_for_buy_date(project, buy_date, *, pair_share=.5, report_share=.5,
                    key=lambda x:max(x['after_weight'], x['before_weight'], abs(x['weight_change'])),
                    reverse=True)[:15]
     compact = compact_records(project, decision, buy, [x['stock_code'] for x in focus])
-    from kr_report_verification import verify, local_status
-    explanation = local_explanation(result, compact)
-    warning = None
-    agent_used = 'local'
-    analysis_facts = explanation_facts(result, compact)
-    verification = local_status(explanation)
-    if agent not in ('local', 'codex', 'claude'):
-        raise ValueError('agent must be local, codex or claude')
-    if agent != 'local':
-        last_error = None
-        # At most two revisions/re-generations, with full report re-verification.
-        for attempt in range(3):
-            try:
-                draft, _ = llm_explanation(result, compact, agent,
-                                           feedback=last_error or '')
-                checked = verify(draft, analysis_facts, backend=agent)
-                if checked['status'] == 'PASS':
-                    explanation = draft
-                    verification = checked
-                    agent_used = agent
-                    last_error = None
-                    break
-                last_error = '; '.join(checked['errors'][:4]) or '검증 실패'
-            except Exception as exc:
-                last_error = str(exc)
-                # No reason to retry a disconnected / non-functioning CLI.
-                break
-        if agent_used == 'local':
-            warning = (f'{agent} 설명을 독립 검증으로 승인하지 못해 로컬 설명으로 대체합니다. '
-                       f'LLM 의미 검증 완료로 표시하지 않습니다: {last_error}')
-            verification = local_status(explanation, reason=warning)
-    if verification['status'] == 'FAIL':
-        raise RuntimeError('로컬 설명의 필수 구조/표시 검증 실패: ' +
-                           '; '.join(verification['errors']))
+    details = build_portfolio_explanation(result, compact, agent)
+    explanation = details['explanation']
+    agent_used = details['agent_used']
+    warning = details['agent_warning']
+    analysis_facts = details['analysis_facts']
+    verification = details['verification']
     dest = output_dir(project, 'portfolio', str(buy.date()), str(buy.date()), pair_share, report_share, K, seed)
     pd.DataFrame(result['comparison']).sort_values('after_weight', ascending=False).to_csv(
         dest/'ranks_and_weights.csv', index=False, encoding='utf-8-sig')
