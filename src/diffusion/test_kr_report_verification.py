@@ -11,7 +11,9 @@ def example():
         "stock_code": "005930", "company": "샘플기업",
         "before_rank": 8, "after_rank": 5,
         "before_weight": .015003, "after_weight": .102345,
-        "weight_change": .087342, "report_date": None,
+        "weight_change": .087342, "rank_improvement": 3,
+        "mom_rank_score": .2, "pair_rank_score": .3,
+        "report_date": None,
         "implied_upside": None, "before_signal_score": .134,
         "after_signal_score": .346, "report_rank_score": 0.0,
     }
