@@ -160,12 +160,11 @@ def compact_agent_facts(facts: dict) -> dict:
 
 def model_verdicts(backend: str, markdown: str, facts: dict, claims: list[dict]) -> dict:
     """Run a separate read-only LLM review. Input is data, never execution instructions."""
-    from kr_report_collection import codex_status, claude_status, load_codex_backend
+    from kr_report_collection import load_codex_backend
     if backend not in ("codex", "claude"):
         raise ValueError("Verification backend must be codex or claude")
-    status = codex_status() if backend == "codex" else claude_status()
-    if not status["ready"]:
-        raise RuntimeError(status["message"])
+    # A missing or unauthenticated CLI is already reported by its actual call.
+    # Avoid a second login-status subprocess for every verification.
     allowed = sorted(evidence_ids(facts))
     prompt = (
         "당신은 작성 에이전트와 별도로 실행하는 엄격한 포트폴리오 설명 검증자다. "
