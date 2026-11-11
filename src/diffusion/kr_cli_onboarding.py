@@ -31,7 +31,6 @@ def launch_terminal(provider: str, action: str, project: Path) -> str:
     subprocess.Popen(
         args,
         cwd=str(project),
-        stdin=subprocess.DEVNULL,
         creationflags=creationflags,
         close_fds=True,
     )
