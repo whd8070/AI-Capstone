@@ -422,12 +422,37 @@ with refresh_tab:
 
     confirm = st.checkbox('수집 범위·선택한 CLI 사용량·시점 제한을 확인했습니다',
                           key='refresh_confirm')
-    invalid_dates = bool(auto_portfolio and buy_for_refresh <= until)
-    if invalid_dates:
-        st.error('포트폴리오 매수일은 수집 마감일 이후여야 합니다. 미래 정보 사용을 방지합니다.')
-    allowed = bool(plan and plan['can_fetch'] and confirm and
-                   not invalid_dates and (not extract or backend in connected))
-    if st.button('선택한 단계 실행', disabled=not allowed, type='primary', key='refresh_run'):
+    # Keep the action clickable: a disabled button hides exactly which prerequisite failed.
+    # Validate ALL conditions again on click, before any download or AI call.
+    run_blockers = []
+    if plan is None:
+        run_blockers.append('리포트 수집 범위 분석이 실패했습니다. 위 오류를 확인하세요.')
+    elif not plan.get('can_fetch'):
+        run_blockers.append(
+            f'수집할 새 날짜가 없습니다 (마감일: {until}). '
+            '기본 리포트 데이터의 마지막 날짜보다 늦은 마감일을 선택하세요.')
+    if extract and (backend is None or backend not in connected):
+        run_blockers.append(
+            'LLM 구조화 엔진이 선택되지 않았거나 연결이 해제됐습니다. '
+            '위의 연결 상태를 확인하고 Claude 또는 Codex를 다시 선택하세요.')
+    if auto_portfolio and (buy_for_refresh is None or buy_for_refresh <= until):
+        run_blockers.append(
+            f'포트폴리오 매수일({buy_for_refresh})이 수집 마감일({until})보다 늦어야 합니다. '
+            '마감일이 오늘이면 자동 포트폴리오 계산을 해제하거나 마감일을 앞당기세요.')
+    if not confirm:
+        run_blockers.append('아래 실행 확인 체크박스를 선택하세요.')
+
+    if run_blockers:
+        st.warning('실행 전 확인할 사항: ' + ' / '.join(run_blockers))
+    else:
+        st.success('수집 실행 조건 충족 · 선택한 단계 실행 가능')
+    if st.button('선택한 단계 실행', type='primary', key='refresh_run'):
+        if run_blockers:
+            st.error('아래 조건이 충족되지 않아 실행하지 않았습니다. '
+                     '설정을 수정하고 다시 눌러 주세요.')
+            for reason in run_blockers:
+                st.markdown('- ' + reason)
+            st.stop()
         with st.status('신규 리포트 처리 중', expanded=True) as status_box:
             event_log = st.empty()
             latest_lines = []
