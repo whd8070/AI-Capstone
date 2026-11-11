@@ -2,11 +2,24 @@
 
 > 아주대학교 AI 캡스톤디자인 · 국내 주식 MOM + PAIR + REPORT 로컬 웹 프로토타입
 
-## 🚀 빠른 시작 — Windows / macOS
+## 🚀 빠른 시작 — 처음 설치 / 다음부터 실행 / 업데이트
 
-### Windows 11 — Git·Python이 전혀 없는 새 PC
+**처음 설치와 이후 재실행은 다릅니다.** 이미 웹이 실행된 PC에서는 매번 Git·Python을 설치하거나 pip를 다시 실행할 필요가 없습니다. 아래 **재실행** 명령을 사용하세요. 모든 실행은 로컬 브라우저 <http://127.0.0.1:8501>에서 열리고 터미널 `Ctrl+C`로 종료합니다.
 
-**Git이나 Python을 미리 설치할 필요가 없습니다.** Windows에 기본 제공되는 PowerShell을 열고 아래 명령을 실행하세요. 저장소의 [bootstrap_windows.ps1](bootstrap_windows.ps1)을 내려받은 후, 내용을 확인하고 Windows 부트스트랩을 실행합니다.
+### Windows 11 — 이미 설치했다면 (재실행)
+
+PowerShell에서 다음을 실행합니다. **기본 자동 설치 경로**는 `%USERPROFILE%\AI-Capstone`이며, 다른 위치에 clone했다면 해당 폴더로 이동하세요.
+
+```powershell
+cd "$HOME\AI-Capstone"
+.\run_windows.cmd
+```
+
+`run_windows.cmd`는 **기존 `.venv`를 바로 실행**하며 Git 설치, Python 설치, `pip install`, `git pull`을 하지 않습니다. 파일 탐색기에서 저장소 루트의 `run_windows.cmd`를 더블클릭해도 됩니다. `cd` 경로를 모르겠다면 파일 탐색기에서 `run_windows.cmd`가 있는 폴더를 열거나 `git rev-parse --show-toplevel`로 저장소 루트를 확인하세요.
+
+### Windows 11 — 맨 처음 설치
+
+Windows PowerShell에서 아래 명령을 실행합니다. Git·Python 3.11이 없으면 설치를 시도하고, 사용자 PATH 등록 → GitHub clone → 가상환경·의존성 설정 → 웹 실행을 진행합니다.
 
 ```powershell
 $bootstrap = Join-Path $env:TEMP 'AI-Capstone-bootstrap.ps1'
@@ -14,24 +27,42 @@ Invoke-WebRequest 'https://raw.githubusercontent.com/whd8070/AI-Capstone/main/bo
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File $bootstrap
 ```
 
-이 설치기는 **Git → Python 3.11(64비트) → 현재 사용자 PATH 등록 → 저장소 clone → `.venv` → 의존성 설치·검증 → Streamlit 실행** 순서로 진행합니다. 설치 위치는 기본 `~/AI-Capstone`이며 브라우저 주소는 <http://127.0.0.1:8501>입니다. `winget`을 우선 사용하고, 제공되지 않거나 실패하면 **공식 배포처의 디지털 서명된 설치 프로그램**으로 재시도합니다. GitHub 및 python.org에 접속할 인터넷 연결이 필요합니다. 설치 프로그램에 따라 Windows 권한 승인 요청이 나타날 수 있습니다.
+설치 파일은 공식 출처에서 내려받고 디지털 서명을 확인하도록 구성했습니다. 회사·학교 보안 정책에 따라 별도 승인이 필요하거나 자동 설치가 차단될 수 있습니다. 이미 저장소가 있지만 가상환경 설치를 다시 점검해야 하는 경우에는 **`start_windows.cmd`**를 사용하세요. 기존 프로젝트 변경 사항이나 캐시는 자동 삭제하지 않습니다.
 
-이미 저장소를 갖고 있다면 해당 폴더의 **`start_windows.cmd`를 더블클릭**하거나 PowerShell에서 실행하세요. 이 실행기도 Git·Python 3.11 부재 시 설치를 시도합니다. Git 저장소에 변경된 파일이 있어도 자동 `git pull`이나 강제 덮어쓰기는 하지 않습니다. 새 버전이 필요하면 직접 `git pull` 하세요.
+### macOS (Apple Silicon / Intel) — 이미 설치했다면 (재실행)
 
-설치에 실패하면 오류 메시지를 확인하세요. 특히 회사·학교 PC의 실행 정책·앱 설치 제한, 프록시, 바이러스 백신 또는 winget 제한이 있으면 자동 설치가 차단될 수 있습니다. 부트스트랩은 관리자 권한이나 OS 보안 설정을 임의 변경하지 않습니다. [Windows 문제 해결](src/diffusion/README_KR_REPORT_WEB.md)을 참고하세요.
-
-### macOS (Intel / Apple Silicon, 터미널)
-
-Python 3.11이 없다면 [Homebrew](https://brew.sh/) 설치 후 `brew install python@3.11`을 실행하세요.
+macOS **터미널**에서 다음을 실행합니다. 초기 설치가 `$HOME/AI-Capstone`이 아닌 곳이었다면 `cd` 경로만 바꾸세요.
 
 ```bash
-git clone https://github.com/whd8070/AI-Capstone.git
-cd AI-Capstone/src/diffusion
-python3.11 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements_kr_report_web.txt
-python -m streamlit run kr_report_web.py --server.address 127.0.0.1 --server.port 8501
+cd "$HOME/AI-Capstone"
+bash ./run_mac.sh
 ```
+
+`run_mac.sh`는 저장소 루트에서 기존 `src/diffusion/.venv/bin/python`으로 Streamlit을 시작합니다. **Homebrew 설치, pip 재설치, Git 다운로드/업데이트는 하지 않습니다.** 가상환경 activate도 필요하지 않습니다.
+
+### macOS — 맨 처음 설치
+
+아직 Git/Python이 없는 Mac은 터미널에서 다음 명령으로 설치기를 내려받아 실행합니다.
+
+```bash
+curl -fL https://raw.githubusercontent.com/whd8070/AI-Capstone/main/bootstrap_mac.sh -o /tmp/ai-capstone-bootstrap-mac.sh
+bash /tmp/ai-capstone-bootstrap-mac.sh
+```
+
+이 설치기는 macOS Git 명령줄 도구 확인 → Homebrew(필요 시 설치 승인) → Python 3.11 → 저장소 clone → `.venv` 설치·검증 → 웹 실행 순서로 진행합니다. Git 명령줄 도구가 없다면 **macOS 설치 대화상자 완료 후 같은 명령을 재실행**해야 할 수 있습니다. 설치 경로는 기본 `~/AI-Capstone`이며 기존 clone 및 캐시는 유지합니다.
+
+이미 Git clone을 했다면 해당 루트 폴더에서 **`bash ./start_mac.sh`**로 초기 의존성 설치 및 실행을 할 수 있습니다. macOS에서 설치/로그인을 진행할 때 필요한 Claude·Codex CLI는 웹 기본 설치에 포함되지 않으며, 3페이지의 연결 안내에 따라 선택적으로 설정합니다.
+
+### 코드 업데이트 (Windows/macOS 공통)
+
+**웹 서버를 `Ctrl+C`로 종료하고**, 저장소 루트에서 `git pull origin main`을 실행합니다. 그다음 위의 OS별 **재실행** 명령(`.\run_windows.cmd` 또는 `bash ./run_mac.sh`)을 사용하면 됩니다. **의존성 파일이 변경된 경우에만** Windows는 `start_windows.cmd`, macOS는 `bash ./start_mac.sh`를 실행하여 패키지 설치 검사를 다시 수행하세요. `git pull`은 로컬 변경 내용과 충돌할 수 있으므로 커밋되지 않은 수정사항을 먼저 확인하세요.
+
+| 상황 | Windows | macOS |
+| --- | --- | --- |
+| 처음 설치 | PowerShell bootstrap (위 코드) | `bash /tmp/ai-capstone-bootstrap-mac.sh` |
+| 두 번째 실행부터 | `.\run_windows.cmd` | `bash ./run_mac.sh` |
+| 패키지 재설정 | `.\start_windows.cmd` | `bash ./start_mac.sh` |
+| 코드만 갱신 | `git pull origin main` 후 재실행 | `git pull origin main` 후 재실행 |
 
 ### 웹 접속 및 주의사항
 
