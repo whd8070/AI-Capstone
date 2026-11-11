@@ -1,29 +1,18 @@
 @echo off
 setlocal
-set "APP_DIR=%~dp0src\diffusion"
-if not exist "%APP_DIR%\setup_windows.ps1" (
-  echo [ERROR] Run this launcher from the cloned AI-Capstone repository.
+set "ROOT=%~dp0"
+if not exist "%ROOT%bootstrap_windows.ps1" (
+  echo [ERROR] bootstrap_windows.ps1 is missing. Download the latest repository files.
   pause
   exit /b 1
 )
-pushd "%APP_DIR%"
-if errorlevel 1 (
-  echo [ERROR] Could not enter the application folder.
-  pause
-  exit /b 1
-)
-echo [AI-Capstone] Checking Windows environment...
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%APP_DIR%\setup_windows.ps1"
+echo [AI-Capstone] Checking Git, Python 3.11 and user PATH...
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%ROOT%bootstrap_windows.ps1"
 if errorlevel 1 goto :failed
-echo [AI-Capstone] Starting the local web app...
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%APP_DIR%\run_web.ps1"
-if errorlevel 1 goto :failed
-popd
 exit /b 0
 :failed
 echo.
-echo [ERROR] See the message above. No global PowerShell policy was changed.
-echo [ERROR] Check README.md and src\diffusion\README_KR_REPORT_WEB.md.
+echo [ERROR] Setup or web startup failed. Please check the message above.
+echo [ERROR] Existing project files were not intentionally deleted.
 pause
-popd
 exit /b 1
