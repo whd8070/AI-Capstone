@@ -2,13 +2,22 @@
 
 이 폴더의 기존 `kr_pair_cpu.py`, `kr_pair_core.py`, `KR_MOM_PAIR_20_SLEEVES_CPU.ipynb`에 REPORT 순위 신호를 추가한 **로컬 Streamlit 실험용 대시보드**입니다. 자동 주문 기능은 없습니다.
 
-> 처음 사용하는 Windows 11 PC에는 [저장소 루트 README](../../README.md)의 자동 설치 명령을 사용하세요. Git·Python 설치까지 자동 시도합니다.
+> **재실행은 재설치가 아닙니다.** 이미 설치했다면 Windows에서는 저장소 루트의 `run_windows.cmd`, macOS에서는 `bash ./run_mac.sh`만 실행하면 됩니다. 자세한 명령은 [루트 README](../../README.md)에서 확인하세요.
 
 ## 1. 설치 및 실행 (웹만)
 
-**Windows 11 — Git/Python이 없는 PC에서도 시작하는 방법**
+### Windows 11 — 재실행 (이미 최초 설치 완료)
 
-PowerShell을 열고 다음 명령을 실행합니다. 먼저 다운로드한 스크립트 내용을 확인하고 실행하는 것을 권장합니다.
+```powershell
+cd "$HOME\AI-Capstone"
+.\run_windows.cmd
+```
+
+자동 설치 기본 경로는 `%USERPROFILE%\AI-Capstone`입니다. 프로젝트를 바탕화면·다른 디스크에 저장했다면 **해당 저장소 루트**로 이동해야 합니다. `run_windows.cmd`를 탐색기에서 더블클릭해도 됩니다. 기존 `src/diffusion/.venv`를 바로 사용하므로 `pip install`, Git/Python 재설치, 가상환경 activate는 필요하지 않습니다.
+
+### Windows 11 — 최초 설치 또는 설치 복구
+
+Git·Python 3.11이 없더라도 Windows PowerShell에 다음 명령을 입력합니다.
 
 ```powershell
 $bootstrap = Join-Path $env:TEMP 'AI-Capstone-bootstrap.ps1'
@@ -16,36 +25,49 @@ Invoke-WebRequest 'https://raw.githubusercontent.com/whd8070/AI-Capstone/main/bo
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File $bootstrap
 ```
 
-Git/Python이 없으면 `winget`으로 설치를 시도하며, 실패하면 Git for Windows 공식 GitHub 릴리스 또는 Python.org의 **디지털 서명 확인을 통과한 설치 파일**을 사용합니다. Python 3.11(64비트) 확인 후, 사용자 PATH와 현재 실행 세션 경로를 모두 구성합니다. 기본 설치 위치는 `%USERPROFILE%\AI-Capstone`입니다. 해당 폴더가 없는 경우에만 clone하고, 이미 존재하는 Git 저장소의 사용자 변경사항은 보존합니다. Python 버전 또는 패키지가 잘못됐으면 오류를 표시하고 `.venv`를 자동 삭제하지 않습니다.
+Git/Python 자동 탐지·설치, 사용자 PATH 설정, clone, 웹 전용 패키지 검증 및 실행을 순서대로 진행합니다. 이미 저장소를 내려받았고 가상환경만 새로 설정해야 한다면 루트의 `start_windows.cmd`를 이용하세요. 기존 `.venv`·캐시·사용자 변경사항을 자동 삭제하지 않습니다.
 
-이미 저장소가 있다면 루트의 `start_windows.cmd`를 더블클릭하거나 다음 명령을 실행합니다.
-
-```powershell
-cd AI-Capstone
-.\start_windows.cmd
-```
-
-**필수 환경/문제 해결:** Windows 11 64비트, 인터넷 연결 및 다운로드 권한이 필요합니다. 회사·학교의 보안 정책 또는 설치 권한 제한이 있으면 자동 설치가 실패할 수 있고, 일부 환경에서는 사용자 승인 또는 관리자 권한이 요구될 수 있습니다.
-
-- Git 설치 실패: https://git-scm.com/install/windows 에서 공식 설치 가능 여부를 확인하세요.
-- Python 3.11 설치 실패: https://www.python.org/downloads/ 에서 3.11 x64 설치 가능 여부를 확인하세요.
-- PATH 오류: 부트스트랩의 사용자 PATH 등록 결과를 확인하고 새 터미널을 열어 재실행하세요.
-- PowerShell 실행 제한: `.ps1`을 직접 실행하지 말고 루트의 `start_windows.cmd` 또는 위의 프로세스 한정 `-ExecutionPolicy Bypass` 명령을 사용하세요. 그룹 정책으로 강제 차단된 환경에서는 관리자에게 문의해야 합니다.
-- 패키지 설치 실패: 인터넷/프록시, 디스크 공간, PyTorch DLL에 필요한 Microsoft Visual C++ 재배포 패키지를 확인하세요.
-- 실제 웹 계산 실패: 최초 44종목 Yahoo/FRED 데이터 수집의 공급자 상태와 모델 체크포인트 및 리포트 파일이 올바르게 내려받아졌는지 확인하세요.
-
-완료 후 <http://127.0.0.1:8501>을 열고, 종료할 때는 터미널에서 `Ctrl+C`를 누릅니다. 기본 웹은 Claude/Codex CLI나 Node.js를 요구하지 않습니다. 설명·리포트 구조화에 LLM을 사용할 때만 해당 CLI를 설치·로그인합니다.
-
-**macOS 터미널 —** 저장소를 복제한 후 `src/diffusion`에서 (Python 3.11이 없다면 Homebrew로 `brew install python@3.11`):
+### macOS (Apple Silicon / Intel) — 재실행
 
 ```bash
-python3.11 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements_kr_report_web.txt
-python -m streamlit run kr_report_web.py --server.address 127.0.0.1 --server.port 8501
+cd "$HOME/AI-Capstone"
+bash ./run_mac.sh
 ```
 
-브라우저에서 **http://127.0.0.1:8501**로 접속합니다. 종료는 `Ctrl+C`입니다. 웹만 사용한다면 `JupyterLab`, `ipykernel`, `nbformat`, `matplotlib`을 설치하지 않습니다. 신규 리포트 다운로드·추출 화면은 Python의 `requests`·`pymupdf`를 사용하며, **Claude/Codex 설명·추출을 선택할 때만** 선택한 CLI가 필요합니다. 기존 Diffusion 노트북은 선택 사항이므로 해당 [별도 안내](README_KR_PAIR_CPU.md)를 따르세요.
+Mac도 가상환경 활성화가 필요 없고 `run_mac.sh`는 네트워크를 통해 설치하지 않습니다. 재실행 시 `Python 3.11`, Homebrew, Git을 다시 설치하지 않습니다.
+
+### macOS — 최초 설치
+
+터미널에서 아래 명령으로 공식 GitHub 저장소의 Mac 설치 스크립트를 다운로드한 다음 실행합니다.
+
+```bash
+curl -fL https://raw.githubusercontent.com/whd8070/AI-Capstone/main/bootstrap_mac.sh -o /tmp/ai-capstone-bootstrap-mac.sh
+bash /tmp/ai-capstone-bootstrap-mac.sh
+```
+
+Git이 없으면 Apple 명령줄 개발도구 설치 화면을 열고 사용자 확인을 요구합니다. 해당 설치 완료 후 같은 명령을 다시 실행하세요. Python 3.11이 없으면 Homebrew(필요 시 사용자 승인)를 통해 설치합니다. GitHub clone 기본 경로는 `~/AI-Capstone`이며 Python 가상환경은 `src/diffusion/.venv`입니다. 기존 저장소가 있다면 `cd <실제 AI-Capstone 저장소 루트>` 후 `bash ./start_mac.sh`로 초기 가상환경 구성 및 실행이 가능합니다.
+
+### 업데이트 / 오류 해결 (공통)
+
+웹 서버를 `Ctrl+C`로 종료한 뒤 다음을 실행합니다.
+
+```bash
+git pull origin main
+```
+
+그 후 Windows는 `run_windows.cmd`, Mac은 `bash ./run_mac.sh`로 다시 실행합니다. 새로운 Python 패키지가 필요한 업데이트에 한해서 Windows `start_windows.cmd` 또는 Mac `bash ./start_mac.sh`로 의존성을 갱신하세요. `git pull`은 로컬 수정사항과 충돌할 수 있습니다.
+
+**확인 사항:**
+
+- **Git 프로젝트 폴더가 비어 있음:** Git 설치 위치는 프로젝트 clone 경로와 다릅니다. 저장소 루트는 기본 사용자 홈의 `AI-Capstone`이며, 실제 위치를 모르면 저장소 안에서 `git rev-parse --show-toplevel`로 확인하세요.
+- **PowerShell 실행 제한:** Windows에서는 `.ps1` 직접 실행 대신 루트의 `.cmd`를 사용하세요.
+- **다른 Python이 활성화됨:** 두 OS 모두 프로젝트 `.venv`의 인터프리터를 직접 사용하므로 별도 activate가 필요 없습니다.
+- **모델 체크포인트·리포트 파일 누락:** `src/diffusion/checkpoints/kr/stable_best.pt`와 `agents/collection/data/handoff`가 포함되어 있는지 확인하세요. 체크포인트가 Git LFS 포인터라면 실제 파일이 필요합니다.
+- **PyTorch DLL 오류 (Windows):** Microsoft Visual C++ Redistributable x64 설치를 확인하세요.
+- **시세 가져오기 실패:** Yahoo/FRED 공급자 연결이나 KRX 거래일을 확인하세요. 첫 포트폴리오 계산은 과거 44종목 시세 최초 다운로드가 필요할 수 있습니다.
+- **포트 8501 사용 중:** 동일 웹 서버가 이미 실행 중일 수 있습니다. 기존 터미널에서 `Ctrl+C`로 종료한 뒤 실행하세요.
+
+접속 주소는 **http://127.0.0.1:8501**이고 종료는 `Ctrl+C`입니다. 웹 기본 기능에는 JupyterLab, Node.js, Claude/Codex CLI가 필요하지 않습니다. 선택적 LLM 설명·신규 PDF 구조화를 사용할 때만 Claude/Codex CLI 설치 및 로그인이 필요하며, Windows는 웹 3페이지의 설치·로그인 창 버튼, macOS는 아래 CLI 안내를 따릅니다.
 
 ## 2. 두 가지 핵심 기능
 
