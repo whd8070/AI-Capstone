@@ -2,36 +2,39 @@
 
 이 폴더의 기존 `kr_pair_cpu.py`, `kr_pair_core.py`, `KR_MOM_PAIR_20_SLEEVES_CPU.ipynb`에 REPORT 순위 신호를 추가한 **로컬 Streamlit 실험용 대시보드**입니다. 자동 주문 기능은 없습니다.
 
-> 처음 복제했다면 저장소 [루트 README](../../README.md)의 빠른 시작을 따라 주세요. Windows에서는 PowerShell의 실행 정책 문제를 피하는 `start_windows.cmd`를 사용합니다.
+> 처음 사용하는 Windows 11 PC에는 [저장소 루트 README](../../README.md)의 자동 설치 명령을 사용하세요. Git·Python 설치까지 자동 시도합니다.
 
 ## 1. 설치 및 실행 (웹만)
 
-Windows 11 또는 macOS, Python 3.11(64비트), Git과 인터넷 연결을 준비합니다. Jupyter와 Node.js는 기본 웹에 필요하지 않습니다.
+**Windows 11 — Git/Python이 없는 PC에서도 시작하는 방법**
 
-**Windows 11 (새 PC, PowerShell 또는 CMD):**
+PowerShell을 열고 다음 명령을 실행합니다. 먼저 다운로드한 스크립트 내용을 확인하고 실행하는 것을 권장합니다.
 
 ```powershell
-git clone https://github.com/whd8070/AI-Capstone.git
+$bootstrap = Join-Path $env:TEMP 'AI-Capstone-bootstrap.ps1'
+Invoke-WebRequest 'https://raw.githubusercontent.com/whd8070/AI-Capstone/main/bootstrap_windows.ps1' -OutFile $bootstrap
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $bootstrap
+```
+
+Git/Python이 없으면 `winget`으로 설치를 시도하며, 실패하면 Git for Windows 공식 GitHub 릴리스 또는 Python.org의 **디지털 서명 확인을 통과한 설치 파일**을 사용합니다. Python 3.11(64비트) 확인 후, 사용자 PATH와 현재 실행 세션 경로를 모두 구성합니다. 기본 설치 위치는 `%USERPROFILE%\AI-Capstone`입니다. 해당 폴더가 없는 경우에만 clone하고, 이미 존재하는 Git 저장소의 사용자 변경사항은 보존합니다. Python 버전 또는 패키지가 잘못됐으면 오류를 표시하고 `.venv`를 자동 삭제하지 않습니다.
+
+이미 저장소가 있다면 루트의 `start_windows.cmd`를 더블클릭하거나 다음 명령을 실행합니다.
+
+```powershell
 cd AI-Capstone
 .\start_windows.cmd
 ```
 
-먼저 [Git for Windows](https://git-scm.com/downloads/win), [Python 3.11 64비트](https://www.python.org/downloads/)를 설치하고 새 터미널을 여세요. Python 3.12/3.13만 있는 PC에서는 3.11도 설치해야 합니다. `start_windows.cmd`는 저장소 루트에 있으며 파일 탐색기에서 더블클릭할 수도 있습니다. 설치 스크립트는 `py -3.11`, `python`, `python3` 순서로 실제 Python 3.11(64비트) 여부를 확인합니다.
+**필수 환경/문제 해결:** Windows 11 64비트, 인터넷 연결 및 다운로드 권한이 필요합니다. 회사·학교의 보안 정책 또는 설치 권한 제한이 있으면 자동 설치가 실패할 수 있고, 일부 환경에서는 사용자 승인 또는 관리자 권한이 요구될 수 있습니다.
 
-이 실행기는 `src/diffusion`에서 가상환경을 준비하고 pip 설치, `pip check`, 핵심 모듈 import 검사를 수행한 다음 Streamlit을 실행합니다. `.venv`가 있으면 재사용하며 다른 버전의 환경은 무단 삭제하지 않습니다. PowerShell 정책 제한은 실행 프로세스에만 적용되는 `-ExecutionPolicy Bypass`로 회피하며 전역 정책을 수정하지 않습니다.
+- Git 설치 실패: https://git-scm.com/install/windows 에서 공식 설치 가능 여부를 확인하세요.
+- Python 3.11 설치 실패: https://www.python.org/downloads/ 에서 3.11 x64 설치 가능 여부를 확인하세요.
+- PATH 오류: 부트스트랩의 사용자 PATH 등록 결과를 확인하고 새 터미널을 열어 재실행하세요.
+- PowerShell 실행 제한: `.ps1`을 직접 실행하지 말고 루트의 `start_windows.cmd` 또는 위의 프로세스 한정 `-ExecutionPolicy Bypass` 명령을 사용하세요. 그룹 정책으로 강제 차단된 환경에서는 관리자에게 문의해야 합니다.
+- 패키지 설치 실패: 인터넷/프록시, 디스크 공간, PyTorch DLL에 필요한 Microsoft Visual C++ 재배포 패키지를 확인하세요.
+- 실제 웹 계산 실패: 최초 44종목 Yahoo/FRED 데이터 수집의 공급자 상태와 모델 체크포인트 및 리포트 파일이 올바르게 내려받아졌는지 확인하세요.
 
-**Windows 초기 설치 문제 해결:**
-
-- `git` 명령을 찾지 못함: Git 설치 후 새 터미널에서 다시 실행
-- Python 3.11이 없음: Python 3.11 64비트를 설치하고 새 터미널에서 `py -3.11 --version` 확인
-- `running scripts is disabled`: `.ps1` 직접 실행 대신 저장소 루트의 `.\start_windows.cmd` 실행
-- 기존 `.venv` 버전이 다름: 해당 환경을 백업하거나 이름을 바꾼 뒤 다시 실행
-- PyTorch DLL/import 오류: [Microsoft Visual C++ Redistributable x64](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) 설치 여부 확인 후 재시도
-- pip 다운로드 실패: 네트워크, 프록시, 디스크 공간을 확인하고 다시 실행. 데이터/캐시는 삭제하지 않음
-- 체크포인트 또는 리포트 파일 없음: clone이 완전한지 확인. `checkpoints/kr/stable_best.pt`가 Git LFS 포인터가 아닌 실제 모델 파일인지 확인
-- 포트폴리오 계산 실패: 최초 실행의 44종목 Yahoo/FRED 수집, 선택한 KRX 거래일, 데이터 제공자 연결 상황 확인. 설치 완료와 데이터 수집 성공은 별개
-
-기존 `.ps1` 파일은 고급 사용자를 위해 유지합니다. 기본적으로는 루트의 Windows 실행기를 사용하세요.
+완료 후 <http://127.0.0.1:8501>을 열고, 종료할 때는 터미널에서 `Ctrl+C`를 누릅니다. 기본 웹은 Claude/Codex CLI나 Node.js를 요구하지 않습니다. 설명·리포트 구조화에 LLM을 사용할 때만 해당 CLI를 설치·로그인합니다.
 
 **macOS 터미널 —** 저장소를 복제한 후 `src/diffusion`에서 (Python 3.11이 없다면 Homebrew로 `brew install python@3.11`):
 
