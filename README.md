@@ -8,22 +8,21 @@
 
 모델 파일 `src/diffusion/checkpoints/kr/stable_best.pt`와 리포트 데이터 `agents/collection/data/handoff/`가 포함돼 있는지 확인하세요. 누락된 체크포인트는 실제 학습한 한국 STABLE 모델 파일로 준비해야 합니다.
 
-### Windows (PowerShell)
+### Windows 11 — 새 PC에서 처음 실행하기
+
+먼저 [Git for Windows](https://git-scm.com/downloads/win)와 [Python 3.11 64비트](https://www.python.org/downloads/)를 설치하고 **터미널을 새로 여세요**. Python 3.12 또는 3.13만 설치되어 있으면 3.11도 추가로 설치해야 합니다. 관리자 권한, Jupyter, Node.js, Claude/Codex 로그인은 기본 웹 실행에 필요하지 않습니다.
+
+PowerShell 또는 CMD에서 아래 세 줄만 실행합니다.
 
 ```powershell
 git clone https://github.com/whd8070/AI-Capstone.git
-cd AI-Capstone\src\diffusion
-.\setup_windows.ps1
-.\run_web.ps1
+cd AI-Capstone
+.\start_windows.cmd
 ```
 
-PowerShell에서 스크립트 실행이 차단되는 경우, 실행 정책을 변경하지 않고 직접 실행할 수도 있습니다.
+파일 탐색기에서 저장소 루트의 `start_windows.cmd`를 더블클릭해도 됩니다. 이 실행 파일은 Python 3.11 탐지, `.venv` 생성/재사용, 웹 의존성 설치·검증, Streamlit 실행을 순서대로 처리합니다. PowerShell 실행 정책은 **해당 프로세스에서만** 우회하며 전역 설정을 변경하지 않습니다. 실행 후 [http://127.0.0.1:8501](http://127.0.0.1:8501)을 여세요.
 
-```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements_kr_report_web.txt
-.\.venv\Scripts\python.exe -m streamlit run kr_report_web.py --server.address 127.0.0.1 --server.port 8501
-```
+이미 클론한 사용자는 저장소 루트에서 `git pull` 후 `.\start_windows.cmd`만 실행하면 됩니다. 첫 설치는 인터넷이 필요하며 PyTorch 등 용량이 큰 패키지를 다운로드할 수 있습니다. Python/체크포인트/패키지 오류는 안내 메시지와 [Windows 문제 해결 안내](src/diffusion/README_KR_REPORT_WEB.md)를 참고하세요.
 
 ### macOS (Intel / Apple Silicon, 터미널)
 
