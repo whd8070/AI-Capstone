@@ -48,6 +48,18 @@ def claude_executable():
     native = Path.home() / '.local' / 'bin' / ('claude.exe' if os.name == 'nt' else 'claude')
     if native.is_file() and (os.name == 'nt' or os.access(native, os.X_OK)):
         return str(native)
+    if os.name == 'nt':
+        # WinGet portable installs may not update the already-running web server PATH.
+        local = Path(os.environ.get('LOCALAPPDATA', str(Path.home() / 'AppData' / 'Local')))
+        link = local / 'Microsoft' / 'WinGet' / 'Links' / 'claude.exe'
+        if link.is_file():
+            return str(link)
+        packages = local / 'Microsoft' / 'WinGet' / 'Packages'
+        if packages.is_dir():
+            for folder in sorted(packages.glob('Anthropic.ClaudeCode_*'), reverse=True)[:5]:
+                executable = folder / 'claude.exe'
+                if executable.is_file():
+                    return str(executable)
     return shutil.which('claude')
 
 
