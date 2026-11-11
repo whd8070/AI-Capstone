@@ -23,6 +23,16 @@ def codex_executable():
         for key in ("APPDATA", "LOCALAPPDATA"):
             if os.environ.get(key):
                 candidates += [Path(os.environ[key]) / "npm" / n for n in names]
+        # WinGet portable CLI installs and freshly installed user-scoped CLIs
+        # are not necessarily on the inherited Streamlit server PATH.
+        local = Path(os.environ.get("LOCALAPPDATA", str(home / "AppData" / "Local")))
+        candidates += [local / "Microsoft" / "WinGet" / "Links" / n for n in names]
+        packages = local / "Microsoft" / "WinGet" / "Packages"
+        if packages.is_dir():
+            for folder in sorted(packages.glob("OpenAI.Codex_*"), reverse=True)[:5]:
+                candidates += [folder / n for n in names]
+                candidates += list(folder.glob("**/codex-x86_64-pc-windows-msvc.exe"))[:2]
+                candidates += list(folder.glob("**/codex-aarch64-pc-windows-msvc.exe"))[:2]
     for candidate in candidates:
         if candidate.is_file() and (os.name == "nt" or os.access(candidate, os.X_OK)):
             return str(candidate)
