@@ -2,26 +2,36 @@
 
 이 폴더의 기존 `kr_pair_cpu.py`, `kr_pair_core.py`, `KR_MOM_PAIR_20_SLEEVES_CPU.ipynb`에 REPORT 순위 신호를 추가한 **로컬 Streamlit 실험용 대시보드**입니다. 자동 주문 기능은 없습니다.
 
-> 처음 복제했다면 저장소 [루트 README](../../README.md)의 **Windows / macOS 빠른 시작**을 먼저 따르세요. Windows는 PowerShell 스크립트, macOS는 터미널 명령을 사용합니다.
+> 처음 복제했다면 저장소 [루트 README](../../README.md)의 빠른 시작을 따라 주세요. Windows에서는 PowerShell의 실행 정책 문제를 피하는 `start_windows.cmd`를 사용합니다.
 
 ## 1. 설치 및 실행 (웹만)
 
-Windows 11 또는 macOS(Intel/Apple Silicon), Python 3.11, Git, 인터넷 연결을 준비합니다. **노트북·Jupyter 커널 등록은 필요하지 않습니다.** `checkpoints/kr/stable_best.pt` 및 `../../agents/collection/data/handoff/`의 리포트 데이터 존재 여부를 확인하세요.
+Windows 11 또는 macOS, Python 3.11(64비트), Git과 인터넷 연결을 준비합니다. Jupyter와 Node.js는 기본 웹에 필요하지 않습니다.
 
-**Windows PowerShell —** 저장소를 복제한 후 `src/diffusion`에서:
-
-```powershell
-.\setup_windows.ps1
-.\run_web.ps1
-```
-
-PowerShell 실행 정책이 차단하면 다음을 직접 실행하세요.
+**Windows 11 (새 PC, PowerShell 또는 CMD):**
 
 ```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements_kr_report_web.txt
-.\.venv\Scripts\python.exe -m streamlit run kr_report_web.py --server.address 127.0.0.1 --server.port 8501
+git clone https://github.com/whd8070/AI-Capstone.git
+cd AI-Capstone
+.\start_windows.cmd
 ```
+
+먼저 [Git for Windows](https://git-scm.com/downloads/win), [Python 3.11 64비트](https://www.python.org/downloads/)를 설치하고 새 터미널을 여세요. Python 3.12/3.13만 있는 PC에서는 3.11도 설치해야 합니다. `start_windows.cmd`는 저장소 루트에 있으며 파일 탐색기에서 더블클릭할 수도 있습니다. 설치 스크립트는 `py -3.11`, `python`, `python3` 순서로 실제 Python 3.11(64비트) 여부를 확인합니다.
+
+이 실행기는 `src/diffusion`에서 가상환경을 준비하고 pip 설치, `pip check`, 핵심 모듈 import 검사를 수행한 다음 Streamlit을 실행합니다. `.venv`가 있으면 재사용하며 다른 버전의 환경은 무단 삭제하지 않습니다. PowerShell 정책 제한은 실행 프로세스에만 적용되는 `-ExecutionPolicy Bypass`로 회피하며 전역 정책을 수정하지 않습니다.
+
+**Windows 초기 설치 문제 해결:**
+
+- `git` 명령을 찾지 못함: Git 설치 후 새 터미널에서 다시 실행
+- Python 3.11이 없음: Python 3.11 64비트를 설치하고 새 터미널에서 `py -3.11 --version` 확인
+- `running scripts is disabled`: `.ps1` 직접 실행 대신 저장소 루트의 `.\start_windows.cmd` 실행
+- 기존 `.venv` 버전이 다름: 해당 환경을 백업하거나 이름을 바꾼 뒤 다시 실행
+- PyTorch DLL/import 오류: [Microsoft Visual C++ Redistributable x64](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) 설치 여부 확인 후 재시도
+- pip 다운로드 실패: 네트워크, 프록시, 디스크 공간을 확인하고 다시 실행. 데이터/캐시는 삭제하지 않음
+- 체크포인트 또는 리포트 파일 없음: clone이 완전한지 확인. `checkpoints/kr/stable_best.pt`가 Git LFS 포인터가 아닌 실제 모델 파일인지 확인
+- 포트폴리오 계산 실패: 최초 실행의 44종목 Yahoo/FRED 수집, 선택한 KRX 거래일, 데이터 제공자 연결 상황 확인. 설치 완료와 데이터 수집 성공은 별개
+
+기존 `.ps1` 파일은 고급 사용자를 위해 유지합니다. 기본적으로는 루트의 Windows 실행기를 사용하세요.
 
 **macOS 터미널 —** 저장소를 복제한 후 `src/diffusion`에서 (Python 3.11이 없다면 Homebrew로 `brew install python@3.11`):
 
