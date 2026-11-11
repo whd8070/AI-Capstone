@@ -4,25 +4,21 @@
 
 ## 🚀 빠른 시작 — Windows / macOS
 
-국내 주식 **MOM + PAIR + REPORT** 로컬 웹을 실행하는 최소 설치 방법입니다. **Python 3.11 (64비트)**, Git, 인터넷 연결이 필요합니다. Streamlit 웹은 **Jupyter/노트북이나 Node.js 없이** 실행됩니다.
+### Windows 11 — Git·Python이 전혀 없는 새 PC
 
-모델 파일 `src/diffusion/checkpoints/kr/stable_best.pt`와 리포트 데이터 `agents/collection/data/handoff/`가 포함돼 있는지 확인하세요. 누락된 체크포인트는 실제 학습한 한국 STABLE 모델 파일로 준비해야 합니다.
-
-### Windows 11 — 새 PC에서 처음 실행하기
-
-먼저 [Git for Windows](https://git-scm.com/downloads/win)와 [Python 3.11 64비트](https://www.python.org/downloads/)를 설치하고 **터미널을 새로 여세요**. Python 3.12 또는 3.13만 설치되어 있으면 3.11도 추가로 설치해야 합니다. 관리자 권한, Jupyter, Node.js, Claude/Codex 로그인은 기본 웹 실행에 필요하지 않습니다.
-
-PowerShell 또는 CMD에서 아래 세 줄만 실행합니다.
+**Git이나 Python을 미리 설치할 필요가 없습니다.** Windows에 기본 제공되는 PowerShell을 열고 아래 명령을 실행하세요. 저장소의 [bootstrap_windows.ps1](bootstrap_windows.ps1)을 내려받은 후, 내용을 확인하고 Windows 부트스트랩을 실행합니다.
 
 ```powershell
-git clone https://github.com/whd8070/AI-Capstone.git
-cd AI-Capstone
-.\start_windows.cmd
+$bootstrap = Join-Path $env:TEMP 'AI-Capstone-bootstrap.ps1'
+Invoke-WebRequest 'https://raw.githubusercontent.com/whd8070/AI-Capstone/main/bootstrap_windows.ps1' -OutFile $bootstrap
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File $bootstrap
 ```
 
-파일 탐색기에서 저장소 루트의 `start_windows.cmd`를 더블클릭해도 됩니다. 이 실행 파일은 Python 3.11 탐지, `.venv` 생성/재사용, 웹 의존성 설치·검증, Streamlit 실행을 순서대로 처리합니다. PowerShell 실행 정책은 **해당 프로세스에서만** 우회하며 전역 설정을 변경하지 않습니다. 실행 후 [http://127.0.0.1:8501](http://127.0.0.1:8501)을 여세요.
+이 설치기는 **Git → Python 3.11(64비트) → 현재 사용자 PATH 등록 → 저장소 clone → `.venv` → 의존성 설치·검증 → Streamlit 실행** 순서로 진행합니다. 설치 위치는 기본 `~/AI-Capstone`이며 브라우저 주소는 <http://127.0.0.1:8501>입니다. `winget`을 우선 사용하고, 제공되지 않거나 실패하면 **공식 배포처의 디지털 서명된 설치 프로그램**으로 재시도합니다. GitHub 및 python.org에 접속할 인터넷 연결이 필요합니다. 설치 프로그램에 따라 Windows 권한 승인 요청이 나타날 수 있습니다.
 
-이미 클론한 사용자는 저장소 루트에서 `git pull` 후 `.\start_windows.cmd`만 실행하면 됩니다. 첫 설치는 인터넷이 필요하며 PyTorch 등 용량이 큰 패키지를 다운로드할 수 있습니다. Python/체크포인트/패키지 오류는 안내 메시지와 [Windows 문제 해결 안내](src/diffusion/README_KR_REPORT_WEB.md)를 참고하세요.
+이미 저장소를 갖고 있다면 해당 폴더의 **`start_windows.cmd`를 더블클릭**하거나 PowerShell에서 실행하세요. 이 실행기도 Git·Python 3.11 부재 시 설치를 시도합니다. Git 저장소에 변경된 파일이 있어도 자동 `git pull`이나 강제 덮어쓰기는 하지 않습니다. 새 버전이 필요하면 직접 `git pull` 하세요.
+
+설치에 실패하면 오류 메시지를 확인하세요. 특히 회사·학교 PC의 실행 정책·앱 설치 제한, 프록시, 바이러스 백신 또는 winget 제한이 있으면 자동 설치가 차단될 수 있습니다. 부트스트랩은 관리자 권한이나 OS 보안 설정을 임의 변경하지 않습니다. [Windows 문제 해결](src/diffusion/README_KR_REPORT_WEB.md)을 참고하세요.
 
 ### macOS (Intel / Apple Silicon, 터미널)
 
