@@ -47,6 +47,8 @@ except Exception as err:
     st.stop()
 
 from kr_report_collection import codex_status, claude_status, collection_plan
+from kr_cli_onboarding import launch_terminal, onboarding_hint
+import os
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -290,34 +292,70 @@ with refresh_tab:
             '포트폴리오 설명에도 연결된 CLI를 선택할 수 있습니다. '
             '투자비중은 기존 STABLE·BL/CVaR 엔진이 계산합니다.')
 
-    if st.button('CLI 연결 상태 다시 확인', key='llm_recheck'):
+    st.markdown('#### 1. AI 모델 연결하기')
+    st.caption('설치되지 않은 사용자도 여기서 시작할 수 있습니다. 로컬 Windows PC에서만 '
+               '설치·로그인 창을 열 수 있으며, 인증은 공식 CLI의 터미널/브라우저에서 직접 진행합니다. '
+               '웹은 비밀번호·로그인 토큰을 받지 않습니다.')
+    if st.button('연결 상태 다시 확인', key='llm_recheck'):
         get_llm_status.clear()
+        st.rerun()
     states = get_llm_status()
     cols = st.columns(2)
     for i, key in enumerate(('codex', 'claude')):
         state = states[key]
+        name = 'Codex' if key == 'codex' else 'Claude'
         with cols[i]:
-            st.markdown('**' + ('Codex' if key == 'codex' else 'Claude') + ' CLI**')
-            if state['ready']:
-                st.success('로그인 확인 · 사용 가능')
+            st.markdown('**' + name + ' CLI**')
+            if state.get('ready'):
+                st.success('연결 완료 · 사용 가능')
                 st.caption('실행 파일: ' + state.get('executable', '확인됨'))
             else:
-                st.warning(state['message'])
+                st.warning(state.get('message','CLI 상태 미확인'))
+            st.caption(onboarding_hint(key, state))
+            if os.name == 'nt':
+                if not state.get('ready') and st.button(
+                        name + ' 설치 창 열기', key='install_' + key,
+                        disabled=state.get('state') == 'not_logged_in'):
+                    try:
+                        st.info(launch_terminal(key, 'install', PROJECT))
+                    except Exception as exc:
+                        st.error(f'설치 창을 열지 못했습니다: {exc}')
+                if not state.get('ready') and st.button(
+                        name + ' 로그인 창 열기', key='login_' + key,
+                        disabled=state.get('state') == 'not_installed'):
+                    try:
+                        st.info(launch_terminal(key, 'login', PROJECT))
+                    except Exception as exc:
+                        st.error(f'로그인 창을 열지 못했습니다: {exc}')
+            else:
+                st.caption('macOS/Linux에서는 터미널에서 설치 및 로그인을 진행하세요.')
 
-    connected = connected_agents()
+    if not any(item.get('ready') for item in states.values()):
+        st.info('연결된 AI 모델이 없어도 PDF만 다운로드하거나 2페이지에서 로컬 설명을 '
+                '실행할 수 있습니다. AI 구조화·AI 설명은 연결 후 활성화됩니다.')
+    st.caption('설치·로그인 창에서 절차를 완료한 뒤 **연결 상태 다시 확인**을 누르세요. '
+               'Codex/Claude 연결 상태는 2페이지의 설명 모델 선택에도 반영됩니다.')
+    connected = [key for key in ('codex','claude') if states[key].get('ready')]
     backend = st.selectbox('신규 리포트를 구조화할 LLM', options=connected,
                            format_func=lambda k: 'Codex (연결됨)' if k == 'codex'
                            else 'Claude (연결됨)',
                            placeholder='연결된 CLI 없음', disabled=not connected,
                            key='extract_backend')
-    with st.expander('CLI 설치·로그인 안내', expanded=not connected):
-        st.markdown('CLI의 로그인 인증 정보는 웹에서 읽거나 저장하지 않습니다.')
-        st.markdown('**Codex (필요한 경우 설치):**')
-        st.code('npm install -g @openai/codex\ncodex login\ncodex login status', language='bash')
-        st.markdown('**Claude (선택 설치 스크립트 및 로그인):**')
-        st.code('.\\setup_claude_windows.ps1  # Windows\nbash ./setup_claude_mac.sh  # macOS\nclaude auth login\nclaude auth status', language='bash')
-        st.caption('VS Code Codex 확장과 독립 CLI는 로그인 세션을 공유하지 않을 수 있습니다. '
-                   '설치 및 로그인 후 연결 상태를 다시 확인하세요.')
+    with st.expander('터미널 수동 설치·로그인 / 문제 해결', expanded=False):
+        st.markdown('**Windows에서 설치 버튼이 열리지 않거나 서버가 다른 PC에서 실행 중이면** '
+                    '서버가 설치된 컴퓨터의 터미널에서 직접 실행해야 합니다.')
+        st.markdown('**Codex (Windows, 공식 독립 실행 CLI):**')
+        st.code('irm https://chatgpt.com/codex/install.ps1 | iex\ncodex login\ncodex login status',
+                language='powershell')
+        st.markdown('**Claude (Windows, 공식 CLI):**')
+        st.code('winget install --id Anthropic.ClaudeCode --exact\nclaude auth login\nclaude auth status',
+                language='powershell')
+        st.markdown('**macOS:**')
+        st.code('npm install -g @openai/codex\ncodex login\n# Claude: bash ./setup_claude_mac.sh\nclaude auth login',
+                language='bash')
+        st.caption('VS Code 확장의 로그인과 CLI 로그인은 별개일 수 있습니다. '
+                   '연결이 계속 실패하면 터미널에서 codex login status 또는 '
+                   'claude auth status를 확인한 뒤 웹을 재시작하세요.')
 
     st.divider()
     until = st.date_input('리포트 수집 마감일 (이 날짜까지 공개분)',
