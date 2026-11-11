@@ -74,7 +74,13 @@ if ($LASTEXITCODE -ne 0) {
 if ($LASTEXITCODE -ne 0) { throw 'Installed Python dependencies are inconsistent (pip check failed).' }
 
 Write-Host '[setup] Checking required Python imports...' -ForegroundColor Cyan
-& $venvPython -c 'import importlib; mods = ("numpy", "pandas", "scipy", "sklearn", "torch", "yfinance", "pandas_datareader", "streamlit", "psutil", "requests", "fitz", "jsonschema"); [importlib.import_module(x) for x in mods]; print("IMPORTS_OK")'
+# Run a real .py file: Windows PowerShell 5.1 strips nested double quotes from -c arguments.
+# The previous -c one-liner produced NameError: name 'numpy' is not defined.
+$importCheck = Join-Path $PSScriptRoot 'check_windows_imports.py'
+if (-not (Test-Path -LiteralPath $importCheck -PathType Leaf)) {
+    throw "Missing import validation script: $importCheck. Run git pull origin main."
+}
+& $venvPython $importCheck
 if ($LASTEXITCODE -ne 0) {
     throw 'Python import check failed. If torch reports a DLL error, install the Microsoft Visual C++ 2015-2022 x64 Redistributable and rerun setup.'
 }
