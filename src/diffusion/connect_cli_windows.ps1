@@ -41,6 +41,23 @@ function Resolve-Cli {
             return $candidate
         }
     }
+    # WinGet can install a portable CLI without creating an immediately usable
+    # command alias; resolve it directly from the per-user package folder.
+    $packages = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages'
+    if (Test-Path -LiteralPath $packages -PathType Container) {
+        $prefix = if ($Key -eq 'codex') { 'OpenAI.Codex_*' } else { 'Anthropic.ClaudeCode_*' }
+        foreach ($folder in @(Get-ChildItem -LiteralPath $packages -Directory -Filter $prefix -ErrorAction SilentlyContinue)) {
+            if ($Key -eq 'codex') {
+                $exeNames = @('codex.exe','codex-x86_64-pc-windows-msvc.exe','codex-aarch64-pc-windows-msvc.exe')
+            } else {
+                $exeNames = @('claude.exe')
+            }
+            foreach ($n in $exeNames) {
+                $exePath = Join-Path $folder.FullName $n
+                if (Test-Path -LiteralPath $exePath -PathType Leaf) { return $exePath }
+            }
+        }
+    }
     $found = Get-Command $base -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($found -and $found.Source) { return $found.Source }
     return $null
