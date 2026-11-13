@@ -51,7 +51,7 @@ def main():
                           file=sys.stderr, flush=True)
                     warned = True
         keys=['start','end','pair_share','report_share','K','seed','batch','threads',
-              'sleeves','fee_bps_side','fetch','max_signals']
+              'sleeves','fee_bps_side','fetch','max_signals','formula']
         opts={k:data[k] for k in keys if k in data}
         # Never execute arbitrary historical K/seed from a stale queued request.
         opts['K'], opts['seed'] = engine.FIXED_K, engine.FIXED_SEED

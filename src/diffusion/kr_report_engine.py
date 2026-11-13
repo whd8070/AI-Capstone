@@ -183,7 +183,8 @@ def _ranks(values, names):
 
 
 def signal(market, features, model_data, decision_date, buy_date, consensus, *,
-           pair_share=.5, report_share=.5, K=128, seed=0, batch=128, require_repair=False):
+           pair_share=.5, report_share=.5, K=128, seed=0, batch=128, require_repair=False,
+           formula=None):
     """Reuse original inference and risk optimizer; two knobs are SIGNAL-rank shares, not weight shares."""
     import kr_pair_cpu as kr
     import kr_pair_core as core
@@ -206,17 +207,28 @@ def signal(market, features, model_data, decision_date, buy_date, consensus, *,
     pair_z = np.asarray(core.rank_z((F-M).mean(axis=0)), float)
     before_score = (1-pair_share)*mom_z + pair_share*pair_z
     report_z, report_details, coverage = report_view(consensus, market.names, d, b, _raw_close(market, d))
-    if report_share > 0 and not np.any(np.abs(report_z) > 1e-12):
+    # User formula (validated whitelist expression, never eval'd) replaces the fixed blend.
+    # "before" stays the MOM+PAIR baseline so the before/after comparison keeps its meaning.
+    formula = (formula or '').strip() or None
+    if formula:
+        import kr_formula
+        uses_report = 'report' in kr_formula.used_variables(formula)
+    else:
+        uses_report = report_share > 0
+    if uses_report and not np.any(np.abs(report_z) > 1e-12):
         raise ValueError(f'No meaningful cross-sectional report rank for buy date {b.date()} '
                          f'(covered {coverage} stocks). Choose report=0 or another date.')
-    after_score = (1-report_share)*before_score + report_share*report_z
+    if formula:
+        after_score = kr_formula.blend(formula, mom_z, pair_z, report_z)
+    else:
+        after_score = (1-report_share)*before_score + report_share*report_z
     cov = core.floor_psd(core.LedoitWolf(assume_centered=False).fit(O).covariance_, 1e-5)
     if pair_share == .5:
         before_w = np.asarray([baseline['weights'][n] for n in market.names], float)
         before_diag = baseline['optimizer']
     else:
         before_w, before_diag = core.rank_repair(before_score, cov, hist, CFG)
-    if report_share == 0:
+    if report_share == 0 and not formula:
         after_w, after_diag = before_w.copy(), before_diag
     else:
         after_w, after_diag = core.rank_repair(after_score, cov, hist, CFG)
@@ -259,7 +271,7 @@ def signal(market, features, model_data, decision_date, buy_date, consensus, *,
                                before_weight=float(before_w[i]), after_weight=float(after_w[i]),
                                weight_change=float(after_w[i]-before_w[i]), **r))
     return dict(decision_date=str(d.date()), buy_date=str(b.date()),
-                pair_share=float(pair_share), report_share=float(report_share),
+                pair_share=float(pair_share), report_share=float(report_share), formula=formula,
                 scenario_K=int(K), inference_seed=int(seed),
                 report_coverage=int(coverage),
                 before_weights=before_w, after_weights=after_w,
@@ -307,8 +319,10 @@ def write_json(path, obj):
         tmp.unlink(missing_ok=True)
 
 
-def output_dir(project, mode, start, end, pair_share, report_share, K, seed):
+def output_dir(project, mode, start, end, pair_share, report_share, K, seed, formula=None):
     key = f'{mode}|{start}|{end}|p={pair_share:.8f}|r={report_share:.8f}|K={K}|seed={seed}'
+    if formula:   # unchanged key without a formula keeps existing result folders valid
+        key += f'|formula={formula}'
     short = hashlib.sha256(key.encode()).hexdigest()[:12]
     path = Path(project) / 'results' / 'kr_report_dashboard' / mode / f'{start}_{end}_{short}'
     path.mkdir(parents=True, exist_ok=True)
@@ -317,7 +331,8 @@ def output_dir(project, mode, start, end, pair_share, report_share, K, seed):
 
 def backtest(project, start, end, *, pair_share=.5, report_share=.5,
              K=128, seed=0, batch=128, threads=4, sleeves=20, fee_bps_side=20.,
-             fetch=True, force=False, max_signals=None, require_repair=False, progress=None):
+             fetch=True, force=False, max_signals=None, require_repair=False, progress=None,
+             formula=None):
     import kr_pair_cpu as kr
     project = Path(project).resolve()
     start, end = pd.Timestamp(start).normalize(), pd.Timestamp(end).normalize()
@@ -348,7 +363,7 @@ def backtest(project, start, end, *, pair_share=.5, report_share=.5,
         buy = days[i+1]
         r = signal(market, features, model, d, buy, consensus,
                    pair_share=pair_share, report_share=report_share,
-                   K=K, seed=seed, batch=batch, require_repair=require_repair)
+                   K=K, seed=seed, batch=batch, require_repair=require_repair, formula=formula)
         before_map[d], after_map[d] = r['before_weights'], r['after_weights']
         all_rows.extend([dict(decision_date=r['decision_date'], buy_date=r['buy_date'],
                               report_coverage=r['report_coverage'], **x) for x in r['comparison']])
@@ -374,8 +389,8 @@ def backtest(project, start, end, *, pair_share=.5, report_share=.5,
                  first_signal_date=str(decisions[0].date()),
                  last_mark_date=str(price_days[-1].date()),
                  fill_basis='next_KRX_session_OPEN',
-                 pair_share=float(pair_share), report_share=float(report_share))
-    dest = output_dir(project, 'backtest', str(start.date()), str(end.date()), pair_share, report_share, K, seed)
+                 pair_share=float(pair_share), report_share=float(report_share), formula=formula)
+    dest = output_dir(project, 'backtest', str(start.date()), str(end.date()), pair_share, report_share, K, seed, formula)
     for name, frame in [('nav_before.csv',pre_nav),('nav_after.csv',post_nav),
                         ('trades_before.csv',pre_trades),('trades_after.csv',post_trades),
                         ('daily_rank_weights.csv',pd.DataFrame(all_rows))]:
@@ -509,6 +524,7 @@ def explanation_facts(signal_result, report_records):
         decision_date=signal_result['decision_date'], buy_date=signal_result['buy_date'],
         pair_share_pct=f"{signal_result['pair_share']*100:.2f}%",
         report_share_pct=f"{signal_result['report_share']*100:.2f}%",
+        formula=signal_result.get('formula'),
         report_coverage=signal_result['report_coverage'],
         universe_size=len(comparison), holding_count=len(holdings),
         signal_definition="MOM+PAIR 상대 순위와 REPORT 상대 순위를 결합하며 비중 자체는 결합하지 않음",
@@ -599,8 +615,11 @@ def local_explanation(signal_result, report_records, *, limit=None):
         "## 선정 이유",
         f"신호일 {facts['decision_date']} 종가 정보를 이용해 매수일 {facts['buy_date']}에 "
         f"투입할 신규 슬리브 포트폴리오를 산출했습니다. 실제 편입 종목은 {len(rows)}개입니다. "
-        f"MOM/PAIR 비중 {facts['pair_share_pct']}, REPORT 반영 비중 {facts['report_share_pct']}이며 "
-        "이 값들은 비중의 단순 평균이 아닌 상대 순위 신호의 결합 비율입니다. (settings)",
+        + (f"최종 순위는 사용자 지정 수식 `{facts['formula']}` 으로 MOM·PAIR·REPORT 상대 순위 신호를 결합했으며 "
+           f"(기준 비교용 MOM/PAIR 비중 {facts['pair_share_pct']}), 이 수식은 비중이 아닌 순위 신호에만 적용됩니다. (settings)"
+           if facts.get('formula') else
+           f"MOM/PAIR 비중 {facts['pair_share_pct']}, REPORT 반영 비중 {facts['report_share_pct']}이며 "
+           "이 값들은 비중의 단순 평균이 아닌 상대 순위 신호의 결합 비율입니다. (settings)"),
         "### 실제 편입 종목",
     ]
     for r in rows:
@@ -763,7 +782,7 @@ def regenerate_portfolio_explanation(result, agent, *, progress=None):
 
 def portfolio_for_buy_date(project, buy_date, *, pair_share=.5, report_share=.5,
                            K=128, seed=0, batch=128, threads=4, fetch=True, force=False,
-                           require_repair=False, agent='local', progress=None):
+                           require_repair=False, agent='local', progress=None, formula=None):
     import kr_pair_cpu as kr
     project = Path(project).resolve()
     start_perf = time.perf_counter()
@@ -801,7 +820,7 @@ def portfolio_for_buy_date(project, buy_date, *, pair_share=.5, report_share=.5,
         progress('K=128 시나리오와 위험 최적화 계산 중')
     result = signal(market, features, model, decision, buy, load_consensus(project),
                     pair_share=pair_share, report_share=report_share,
-                    K=K, seed=seed, batch=batch, require_repair=require_repair)
+                    K=K, seed=seed, batch=batch, require_repair=require_repair, formula=formula)
     step('inference_and_optimization', '디퓨전·위험 최적화 완료')
     if progress:
         progress('리포트 근거 정리·로컬 해설 중')
@@ -817,7 +836,7 @@ def portfolio_for_buy_date(project, buy_date, *, pair_share=.5, report_share=.5,
     warning = details['agent_warning']
     analysis_facts = details['analysis_facts']
     verification = details['verification']
-    dest = output_dir(project, 'portfolio', str(buy.date()), str(buy.date()), pair_share, report_share, K, seed)
+    dest = output_dir(project, 'portfolio', str(buy.date()), str(buy.date()), pair_share, report_share, K, seed, formula)
     pd.DataFrame(result['comparison']).sort_values('after_weight', ascending=False).to_csv(
         dest/'ranks_and_weights.csv', index=False, encoding='utf-8-sig')
     with (dest/'reports_compact_needed.jsonl').open('w', encoding='utf-8') as f:

@@ -34,6 +34,19 @@ with st.sidebar:
     fee = st.number_input('편도 수수료 (bp)', min_value=0.0, max_value=500.0, value=20.0, step=1.0)
     fetch = st.checkbox('원격 시세 자동 다운로드/갱신', value=True)
     st.caption('상태 저장: diffusion/results/kr_report_dashboard/ (Git 추적 대상 아님)')
+    st.divider()
+    st.subheader('신호 결합 방식')
+    # 사용자 지정 수식(성향 조사 탭에서 확정). 없으면 위 슬라이더 비율을 그대로 쓴다.
+    formula = st.session_state.get('kr_formula')
+    if formula:
+        st.code(formula, language='text')
+        st.caption('사용자 지정 수식 적용 중: REPORT 비율 슬라이더 대신 이 수식으로 최종 순위를 정합니다. '
+                   'PAIR 비율은 비교 기준(반영 전)에만 쓰입니다.')
+        if st.button('수식 해제 (슬라이더로 돌아가기)', key='formula_clear'):
+            st.session_state.pop('kr_formula', None)
+            st.rerun()
+    else:
+        st.caption("슬라이더 비율 사용 중. '결합 수식 제안' 탭에서 성향에 맞는 수식을 받을 수 있습니다.")
 
 try:
     consensus = eng.load_consensus(PROJECT)
@@ -67,7 +80,8 @@ def display_agent(key):
             'claude': 'Claude CLI (로그인 확인됨)'}[key]
 
 
-bt, portfolio, refresh_tab = st.tabs(['기간 백테스트', '특정 매수일 포트폴리오', '리포트 신규 수집 (선택)'])
+bt, portfolio, refresh_tab, formula_tab = st.tabs(['기간 백테스트', '특정 매수일 포트폴리오', '리포트 신규 수집 (선택)',
+                                                    '결합 수식 제안 (성향 조사)'])
 
 with bt:
     st.subheader('REPORT 공개 이후 20슬리브 성과 비교')
@@ -83,7 +97,8 @@ with bt:
             jobdir, launched = jobs.submit(PROJECT,dict(
                 start=str(start),end=str(end),pair_share=pair,report_share=report,
                 K=int(k),seed=int(seed),batch=128,threads=int(threads),sleeves=20,
-                fee_bps_side=fee,fetch=fetch,max_signals=5 if smoke else None))
+                fee_bps_side=fee,fetch=fetch,max_signals=5 if smoke else None,
+                **({'formula': formula} if formula else {})))
             st.session_state['kr_report_job'] = str(jobdir)
             if launched:
                 st.success(f'새 백테스트 시작: {jobdir}')
@@ -111,7 +126,8 @@ with bt:
                 conf=json.loads(req.read_text(encoding='utf-8'))
                 st.caption(f'요청: 시작={conf.get("start")}, 종료={conf.get("end")}, '
                            f'PAIR={conf.get("pair_share")}, REPORT={conf.get("report_share")}, '
-                           f'K={conf.get("K")}, seed={conf.get("seed")}')
+                           f'K={conf.get("K")}, seed={conf.get("seed")}'
+                           + (f' · 수식={conf.get("formula")}' if conf.get('formula') else ''))
             phase=state.get('status')
             if phase in ('running','queued'):
                 st.info(f'별도 프로세스 실행 중 · PID {state.get("pid")} · {state.get("step","")}')
@@ -187,7 +203,7 @@ with portfolio:
                 st.session_state['kr_report_portfolio'] = eng.portfolio_for_buy_date(
                     PROJECT, buy_date, pair_share=pair, report_share=report,
                     K=int(k), seed=int(seed), threads=int(threads), fetch=fetch,
-                    agent='local', progress=lambda message: stage.info(message))
+                    agent='local', progress=lambda message: stage.info(message), formula=formula)
                 status.update(label='수치 포트폴리오 준비 완료', state='complete',
                               expanded=False)
             except Exception as exc:
@@ -469,7 +485,7 @@ with refresh_tab:
                     new_result = eng.portfolio_for_buy_date(
                         PROJECT, buy_for_refresh, pair_share=pair, report_share=report,
                         K=int(k), seed=int(seed), threads=int(threads), fetch=fetch,
-                        agent='local')
+                        agent='local', formula=formula)
                     st.session_state['kr_report_portfolio'] = new_result
                     if explain_on_refresh != 'local':
                         progress('설명 에이전트', '수치 계산 완료 · 설명과 독립 검증 호출 중')
@@ -522,3 +538,102 @@ with refresh_tab:
             verification = latest_port.get('verification', {})
             st.caption('설명 검증 상태: ' + verification.get('status', '알 수 없음'))
             st.markdown(latest_port['explanation'])
+
+
+# ---------------------------------------------------------------------------
+# 결합 수식 제안: 성향 조사 → 에이전트 제안 → 코드 검사·점검 → 확정하면 위 두 탭 계산에 적용
+with formula_tab:
+    import kr_formula
+    import kr_formula_agent as fagent
+    import kr_formula_diag as fdiag
+    from kr_formula_survey import DEFAULT_PROFILE, QUESTIONS
+
+    FLABEL = {'mom': '모멘텀', 'pair': '모델 전망', 'report': '리포트'}
+
+    def md_table(frame):
+        cells = frame.astype(str).values.tolist()
+        lines = ['| ' + ' | '.join(map(str, frame.columns)) + ' |', '|' + '---|' * len(frame.columns)]
+        lines += ['| ' + ' | '.join(row) + ' |' for row in cells]
+        st.markdown('\n'.join(lines))
+
+    def show_formula_diag(diag, base):
+        st.markdown(f"**수식의 성격** (표본 신호 {diag['date']} 기준, 수익률은 계산하지 않음)")
+        rows = [{'항목': f'{FLABEL[v]} 영향 비중', '이 수식': f"{diag['share'][v]:.0%}",
+                 '기본 수식': f"{base['share'][v]:.0%}"} for v in kr_formula.VARIABLES]
+        rows.append({'항목': '기본 수식과의 순위 유사도', '이 수식': f"{diag['similarity_to_default']:.2f}", '기본 수식': '1.00'})
+        rows.append({'항목': '상위 10종목 중 기본 수식과 겹치는 수',
+                     '이 수식': str(diag['top10_overlap_with_default']), '기본 수식': '10'})
+        md_table(pd.DataFrame(rows))
+
+    st.subheader('성향에 맞는 신호 결합 수식')
+    st.caption('버튼으로 성향을 고르면 에이전트가 MOM·PAIR·REPORT를 섞는 수식을 제안합니다. 수식은 코드로 실행되지 않고 '
+               '허용된 수학 연산만 계산됩니다. 수식은 종목 순위에만 쓰이고 실제 비중은 기존 위험 최적화가 정합니다.')
+    fl, fr = st.columns([1, 1.3], gap='large')
+    with fl:
+        fprofile = {}
+        for q in QUESTIONS:
+            labels = dict(q['options'])
+            fprofile[q['key']] = st.radio(q['text'], list(labels), format_func=labels.get, horizontal=True,
+                                          index=list(labels).index(DEFAULT_PROFILE[q['key']]),
+                                          key='formula_q_' + q['key'])
+        fnote = st.text_input('추가로 바라는 점 (선택, 에이전트만 참고)', max_chars=300, key='formula_note')
+        has_claude = fagent.claude_executable() is not None
+        if st.button('에이전트에게 제안받기', type='primary', disabled=not has_claude, key='formula_agent_run'):
+            with st.spinner('에이전트가 수식을 제안하고 검사하는 중입니다 (10~40초)'):
+                st.session_state['kr_formula_result'] = fagent.propose(fprofile, fnote)
+        if st.button('규칙으로만 만들기 (LLM 없음)', key='formula_rule_run'):
+            st.session_state['kr_formula_result'] = fagent.rule_based(fprofile)
+        if not has_claude:
+            st.caption('Claude Code CLI가 없어 에이전트 버튼을 껐습니다. 규칙 기반은 쓸 수 있습니다.')
+    with fr:
+        fres = st.session_state.get('kr_formula_result')
+        if not fres:
+            st.info('왼쪽에서 성향을 고르고 버튼을 누르세요.')
+        else:
+            st.markdown('**제안된 수식 · ' + ('에이전트 제안' if fres['source'] == 'agent' else '규칙 기반(LLM 없음)') + '**')
+            st.code(fres['formula'], language='text')
+            st.write(fres['explanation'])
+            if fres.get('stop_reason'):
+                st.info(fres['stop_reason'])
+            for issue in fres['issues']:
+                st.warning('성향과 어긋나는 점: ' + issue)
+            if fres['usage']['calls']:
+                st.caption(f"LLM 호출 {fres['usage']['calls']}회 · 토큰 {fres['usage']['tokens']:,}")
+            show_formula_diag(fres['diag'], fres['default_diag'])
+            if fres['attempts']:
+                with st.expander(f"에이전트의 시도 기록 ({len(fres['attempts'])}회)"):
+                    for i, a in enumerate(fres['attempts'], 1):
+                        st.code(a['formula'], language='text')
+                        if a.get('error'):
+                            st.error(f'시도 {i} · 검사기 거부: ' + a['error'])
+                        elif a['issues']:
+                            st.warning(f'시도 {i} · ' + ' / '.join(a['issues']))
+                        else:
+                            st.success(f'시도 {i} · 검사 통과, 성향과 어긋나는 점 없음')
+
+    st.divider()
+    st.markdown('**수식 확정**')
+    st.caption(f"변수: {', '.join(kr_formula.VARIABLES)} · 함수: {', '.join(kr_formula.FUNCTIONS)} · "
+               '연산: + - * / ** · 비교: > < >= <= · 이 밖의 것은 실행되지 않고 거부됩니다.')
+    fstart = (st.session_state.get('kr_formula_result') or {}).get('formula') or formula or fdiag.DEFAULT_FORMULA
+    fcustom = st.text_input('적용할 수식 (직접 고칠 수 있음)', value=fstart, max_chars=300, key='formula_custom_' + fstart)
+    fc1, fc2 = st.columns(2)
+    if fc1.button('검사만 하기', key='formula_check'):
+        try:
+            checked = fdiag.diagnose(fcustom)
+        except kr_formula.FormulaError as err:
+            st.error(f'거부됨: {err}')
+        else:
+            st.success('검사 통과')
+            show_formula_diag(checked, fdiag.diagnose(fdiag.DEFAULT_FORMULA))
+    if fc2.button('이 수식을 백테스트·포트폴리오에 적용', type='primary', key='formula_apply'):
+        try:
+            fdiag.diagnose(fcustom)          # 검사기를 통과한 수식만 세션에 저장한다
+        except kr_formula.FormulaError as err:
+            st.error(f'거부됨: {err}')
+        else:
+            st.session_state['kr_formula'] = fcustom.strip()
+            st.session_state.pop('kr_report_portfolio', None)   # 이전 수식으로 만든 화면 결과는 지운다
+            st.rerun()
+    if formula:
+        st.success(f'현재 적용 중인 수식: `{formula}` (왼쪽 사이드바에서 해제할 수 있습니다)')
