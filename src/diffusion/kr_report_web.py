@@ -11,6 +11,7 @@ import pandas as pd
 import streamlit as st
 
 import kr_report_engine as eng
+from kr_formula_diag import DEFAULT_FORMULA
 
 st.set_page_config(page_title='MOM + PAIR + REPORT', page_icon='📈', layout='wide')
 PROJECT = Path(__file__).resolve().parent
@@ -18,14 +19,23 @@ PROJECT = Path(__file__).resolve().parent
 st.title('KR MOM + PAIR + REPORT')
 st.caption('로컬 전용 · 동결된 STABLE · 44종목 횡단면 순위 · BL/CVaR 최적화 · 20개 슬리브 · 다음 KRX 시가 체결')
 with st.sidebar:
-    st.subheader('순위 신호 배합')
-    pair = st.slider('PAIR 비율', min_value=0.0, max_value=1.0, value=0.5, step=0.05,
-                     help='MOM+PAIR 신호에서 PAIR의 비율 (1−PAIR가 MOM)')
-    report = st.slider('REPORT 비율', min_value=0.0, max_value=1.0, value=0.5, step=0.05,
-                       help='최종 신호의 REPORT 비율 (1−REPORT가 MOM+PAIR)')
-    st.latex(r'z_{base}=(1-p)z_{MOM}+p z_{PAIR}')
-    st.latex(r'z_{final}=(1-r)z_{base}+r z_{REPORT}')
-    st.caption('숫자는 최종 투자비중의 가중평균이 아니라 위험 최적화 전 순위 신호의 비율입니다.')
+    st.subheader('신호 결합 수식')
+    # 결합 방식은 수식 하나로만 정한다. 처음에는 기본 수식(기존 PAIR 0.5 · REPORT 0.5와 같은 결과).
+    custom_formula = st.session_state.get('kr_formula')
+    formula = custom_formula or DEFAULT_FORMULA
+    st.code(formula, language='text')
+    if custom_formula:
+        st.caption('성향 조사 탭에서 확정한 수식입니다.')
+        if st.button('기본 수식으로 되돌리기', key='formula_clear'):
+            st.session_state.pop('kr_formula', None)
+            st.session_state.pop('kr_report_portfolio', None)
+            st.rerun()
+    else:
+        st.caption("기본 수식입니다. '결합 수식 제안' 탭에서 성향에 맞는 수식으로 바꿀 수 있습니다.")
+    st.caption('mom=모멘텀, pair=모델 전망, report=리포트 순위 신호. 수식은 위험 최적화 전 순위 신호에만 적용되고 '
+               '투자비중을 직접 정하지 않습니다. 반영 전 비교 기준은 MOM·PAIR 5:5로 고정입니다.')
+    # 비교 기준(반영 전)과 엔진 인자용 고정값. 화면에서 바꾸지 않는다.
+    pair, report = 0.5, 0.5
     st.divider()
     # Reproducible frozen model configuration; no editable K / seed controls.
     k, seed = eng.FIXED_K, eng.FIXED_SEED
@@ -34,19 +44,6 @@ with st.sidebar:
     fee = st.number_input('편도 수수료 (bp)', min_value=0.0, max_value=500.0, value=20.0, step=1.0)
     fetch = st.checkbox('원격 시세 자동 다운로드/갱신', value=True)
     st.caption('상태 저장: diffusion/results/kr_report_dashboard/ (Git 추적 대상 아님)')
-    st.divider()
-    st.subheader('신호 결합 방식')
-    # 사용자 지정 수식(성향 조사 탭에서 확정). 없으면 위 슬라이더 비율을 그대로 쓴다.
-    formula = st.session_state.get('kr_formula')
-    if formula:
-        st.code(formula, language='text')
-        st.caption('사용자 지정 수식 적용 중: REPORT 비율 슬라이더 대신 이 수식으로 최종 순위를 정합니다. '
-                   'PAIR 비율은 비교 기준(반영 전)에만 쓰입니다.')
-        if st.button('수식 해제 (슬라이더로 돌아가기)', key='formula_clear'):
-            st.session_state.pop('kr_formula', None)
-            st.rerun()
-    else:
-        st.caption("슬라이더 비율 사용 중. '결합 수식 제안' 탭에서 성향에 맞는 수식을 받을 수 있습니다.")
 
 try:
     consensus = eng.load_consensus(PROJECT)
@@ -98,7 +95,7 @@ with bt:
                 start=str(start),end=str(end),pair_share=pair,report_share=report,
                 K=int(k),seed=int(seed),batch=128,threads=int(threads),sleeves=20,
                 fee_bps_side=fee,fetch=fetch,max_signals=5 if smoke else None,
-                **({'formula': formula} if formula else {})))
+                formula=formula))
             st.session_state['kr_report_job'] = str(jobdir)
             if launched:
                 st.success(f'새 백테스트 시작: {jobdir}')
@@ -125,9 +122,9 @@ with bt:
             if req.exists():
                 conf=json.loads(req.read_text(encoding='utf-8'))
                 st.caption(f'요청: 시작={conf.get("start")}, 종료={conf.get("end")}, '
-                           f'PAIR={conf.get("pair_share")}, REPORT={conf.get("report_share")}, '
-                           f'K={conf.get("K")}, seed={conf.get("seed")}'
-                           + (f' · 수식={conf.get("formula")}' if conf.get('formula') else ''))
+                           f'K={conf.get("K")}, seed={conf.get("seed")} · '
+                           + (f'수식=`{conf.get("formula")}`' if conf.get('formula') else
+                              f'PAIR={conf.get("pair_share")}, REPORT={conf.get("report_share")} (수식 도입 전 작업)'))
             phase=state.get('status')
             if phase in ('running','queued'):
                 st.info(f'별도 프로세스 실행 중 · PID {state.get("pid")} · {state.get("step","")}')
@@ -615,7 +612,7 @@ with formula_tab:
     st.markdown('**수식 확정**')
     st.caption(f"변수: {', '.join(kr_formula.VARIABLES)} · 함수: {', '.join(kr_formula.FUNCTIONS)} · "
                '연산: + - * / ** · 비교: > < >= <= · 이 밖의 것은 실행되지 않고 거부됩니다.')
-    fstart = (st.session_state.get('kr_formula_result') or {}).get('formula') or formula or fdiag.DEFAULT_FORMULA
+    fstart = (st.session_state.get('kr_formula_result') or {}).get('formula') or formula
     fcustom = st.text_input('적용할 수식 (직접 고칠 수 있음)', value=fstart, max_chars=300, key='formula_custom_' + fstart)
     fc1, fc2 = st.columns(2)
     if fc1.button('검사만 하기', key='formula_check'):
@@ -635,5 +632,4 @@ with formula_tab:
             st.session_state['kr_formula'] = fcustom.strip()
             st.session_state.pop('kr_report_portfolio', None)   # 이전 수식으로 만든 화면 결과는 지운다
             st.rerun()
-    if formula:
-        st.success(f'현재 적용 중인 수식: `{formula}` (왼쪽 사이드바에서 해제할 수 있습니다)')
+    st.info(f'현재 적용 중인 수식: `{formula}`' + ('' if custom_formula else ' (기본 수식)'))
