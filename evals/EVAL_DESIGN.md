@@ -1,6 +1,6 @@
 # AI-Capstone Evals 설계 v2 — 최종 MVP 수식 제안·설명 검증
 
-- 적용 스펙: 루트 `SPEC.md` v4.0 §5의 **최종 MVP AC**. ① **성향 기반 수식 제안 검증(AC-12a/12b, AC-10c)**과 ② **설명 게시 게이트 검증(AC-06a/07d/07g)**을 별개 트랙으로 측정한다.
+- 적용 스펙: `docs/SPEC.md` v4.0 §5의 **최종 MVP AC**. ① **성향 기반 수식 제안 검증(AC-12a/12b, AC-10c)**과 ② **설명 게시 게이트 검증(AC-06a/07d/07g)**을 별개 트랙으로 측정한다.
 - 대상 구현: `src/diffusion/kr_report_verification.py`의 `rule_errors()`, `verify()`, `local_status()`
 - 데이터셋: `evals/evalset.jsonl`, 36건 (정상 8 / 경계 10 / 실패 10 / 금지 8)
 - 범위: **오프라인 결정적 수식 제안 루프 + 설명 게시 게이트**. 실제 Claude/Codex의 독립 모델 정확도, 브라우저 E2E 품질, 백테스트 수익성은 측정하지 않는다.
@@ -22,7 +22,7 @@
 
 ## 2. 데이터셋과 채점 규칙
 
-JSONL 각 행은 `id`, `category`, `query`, `expect`, `graders`, `note`, `ac`를 가진다. `ac`는 `SPEC.md`의 수용 기준 식별자이며, 러너는 누락 또는 잘못된 접두부를 오류로 처리한다. `query`는 이 서비스가 대화형 챗봇이 아닌 점을 반영한 **검증 단계의 구조화된 테스트 입력**이다. `kind`는 `rules`, `verify`, `local`이다.
+JSONL 각 행은 `id`, `category`, `query`, `expect`, `graders`, `note`, `ac`를 가진다. `ac`는 `docs/SPEC.md`의 수용 기준 식별자이며, 러너는 누락 또는 잘못된 접두부를 오류로 처리한다. `query`는 이 서비스가 대화형 챗봇이 아닌 점을 반영한 **검증 단계의 구조화된 테스트 입력**이다. `kind`는 `rules`, `verify`, `local`이다.
 
 - 정상 8건: 5개 섹션, 출처 ID 기재, 검증기 정상 판정, 근거가 있는 경고, 로컬 해설의 구분.
 - 경계 10건: 섹션/본문 누락, 소수점 3자리 초과, NaN·Inf·None, 길이 초과.
@@ -85,7 +85,7 @@ python evals/run_evals.py --change 'baseline' --golden '12/12 passed'
 
 ## 8. 최종 제출 및 변경관리
 
-최종 제품 기능과 AC 정본은 [SPEC.md](../SPEC.md), 평가자용 사용자 동선은 [docs/FINAL_SUBMISSION.md](../docs/FINAL_SUBMISSION.md) 및 [README.md](../README.md)다. 골든·Evals 데이터 정답을 테스트 결과에 맞춰 임의 변경하지 않는다. CI 실행에는 실제 변경 커밋과 개별 결과 파일을 남긴다. 실측하지 않은 실제 Claude 품질은 별도 측정 대상으로 구분하여 제출한다.
+최종 제품 기능과 AC 정본은 [SPEC.md](../docs/SPEC.md), 평가자용 사용자 동선은 [docs/FINAL_SUBMISSION.md](../docs/FINAL_SUBMISSION.md) 및 [README.md](../README.md)다. 골든·Evals 데이터 정답을 테스트 결과에 맞춰 임의 변경하지 않는다. CI 실행에는 실제 변경 커밋과 개별 결과 파일을 남긴다. 실측하지 않은 실제 Claude 품질은 별도 측정 대상으로 구분하여 제출한다.
 
 
 ## 9. 최종 골든 검증 보강과 수용 범위 (2026-11-17)
@@ -94,4 +94,4 @@ python evals/run_evals.py --change 'baseline' --golden '12/12 passed'
 - 정상 제안 AC-12a, 피드백·오류·대체 AC-12b, 금지 코드 AC-10c, 수식 계산값 계약 AC-12c를 각각 검증한다. **AC-12c의 브라우저 버튼 클릭 → 포트폴리오/백테스트 E2E는 별도 사람 확인이 필요**하다.
 - 독립 결함 주입: `kr_formula_agent.diagnose`를 검사 회피 변이로 바꾸면 악성 수식의 거부 횟수가 줄고 기대식이 달라져 골든이 실패해야 한다. 테스트 종료 후 임시 변이 복원.
 - 24개 수식 Evals의 AC 추적을 수정했다. **FN01~06과 FB01~02는 AC-12a**, 나머지 수정·예외 상황은 AC-12b, 금지 수식은 AC-10c로 분류한다. 과거 실행 JSON은 해당 시점의 데이터셋 해시와 함께 그대로 보존한다.
-- 케이스 기대값·합격선의 최종 소유자는 사람이다. `docs/reviews/EVAL_APPROVAL.md`는 서명용 **미승인 양식**이며 AI가 사람을 대신해 승인할 수 없다.
+- 케이스 기대값·합격선은 사람이 정의하는 기준이며, 자동 Evals 성공을 실제 모델의 정확도로 해석하지 않는다.
