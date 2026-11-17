@@ -2,7 +2,7 @@
 
 이 폴더의 기존 `kr_pair_cpu.py`, `kr_pair_core.py`, `KR_MOM_PAIR_20_SLEEVES_CPU.ipynb`에 REPORT 순위 신호를 추가한 **최종 제출용 로컬 Streamlit MVP**입니다. 자동 주문 기능은 없습니다.
 
-> **재실행은 재설치가 아닙니다.** 이미 설치했다면 Windows에서는 저장소 루트의 `run_windows.cmd`, macOS에서는 `bash ./run_mac.sh`만 실행하면 됩니다. 자세한 명령은 [루트 README](../../README.md)에서 확인하세요.
+> **기존 설치본을 최신 제출 버전으로 바꾸려면 먼저 Git 업데이트가 필요합니다.** `run_windows.cmd`/`run_mac.sh`는 `git pull`을 자동 실행하지 않습니다. 웹을 `Ctrl+C`로 종료한 뒤 저장소 루트에서 `git status` → `git branch --show-current`(`main` 확인) → `git pull --ff-only origin main` 순으로 실행하고, 그다음 재실행하세요. 로컬 변경사항은 보존하고 충돌을 해결해야 합니다. 자세한 명령은 [루트 README](../../README.md)에서 확인하세요.
 
 ## 1. 설치 및 실행 (웹만)
 
@@ -10,6 +10,9 @@
 
 ```powershell
 cd "$HOME\AI-Capstone"
+git status
+git branch --show-current
+git pull --ff-only origin main
 .\run_windows.cmd
 ```
 
@@ -31,6 +34,9 @@ Git/Python 자동 탐지·설치, 사용자 PATH 설정, clone, 웹 전용 패�
 
 ```bash
 cd "$HOME/AI-Capstone"
+git status
+git branch --show-current
+git pull --ff-only origin main
 bash ./run_mac.sh
 ```
 
@@ -52,7 +58,7 @@ Git이 없으면 Apple 명령줄 개발도구 설치 화면을 열고 사용자 
 웹 서버를 `Ctrl+C`로 종료한 뒤 다음을 실행합니다.
 
 ```bash
-git pull origin main
+git pull --ff-only origin main
 ```
 
 그 후 Windows는 `run_windows.cmd`, Mac은 `bash ./run_mac.sh`로 다시 실행합니다. 새로운 Python 패키지가 필요한 업데이트에 한해서 Windows `start_windows.cmd` 또는 Mac `bash ./start_mac.sh`로 의존성을 갱신하세요. `git pull`은 로컬 수정사항과 충돌할 수 있습니다.
