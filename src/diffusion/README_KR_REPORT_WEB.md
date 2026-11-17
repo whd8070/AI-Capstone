@@ -183,7 +183,7 @@ python -m unittest test_kr_report_engine test_kr_report_status test_kr_report_ve
 | ④ 확정 수식의 ①·② 적용 | AC-12c | `kr_report_web.py`와 사용자 웹 확인 |
 | ② 설명 5개 항목·검증 미통과 AI 내용 차단 | AC-06a, AC-07d, AC-07g | `tests/harness/golden_cases.yaml`, `evals/evalset.jsonl`의 오프라인 36건 |
 
-자동 시험은 GitHub Actions에서 수행하며, **현재 36개 Evals는 실제 Claude의 금융 사실 판단 성공률이 아니라 게시 게이트 재현 검사**입니다. 상세 제출 경로는 [최종 제출 안내](../../docs/FINAL_SUBMISSION.md)와 [SPEC](../../SPEC.md)를 참고하세요.
+자동 시험은 GitHub Actions에서 수행하며, **현재 36개 Evals는 실제 Claude의 금융 사실 판단 성공률이 아니라 게시 게이트 재현 검사**입니다. 상세 제출 경로는 [최종 제출 안내](../../docs/FINAL_SUBMISSION.md)와 [SPEC](../../docs/SPEC.md)를 참고하세요.
 
 ## 4. 결과·캐시 및 재실행
 
