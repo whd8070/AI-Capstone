@@ -11,7 +11,7 @@ on:
       - 'src/diffusion/kr_formula_sample_signals.csv'
       - 'src/diffusion/test_kr_formula.py'
       - 'src/diffusion/test_kr_formula_agent.py'
-      - 'SPEC.md'
+      - 'docs/SPEC.md'
       - '.github/workflows/evals-ci.yml'
       - 'evals/EVAL_DESIGN.md'
       - 'evals/requirements-evals.txt'
