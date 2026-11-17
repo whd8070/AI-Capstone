@@ -1,0 +1,33 @@
+name: AC-linked offline Evals
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'evals/evalset.jsonl'
+      - 'evals/run_evals.py'
+      - 'evals/verification_adapter.py'
+      - 'tests/harness/golden_cases.yaml'
+      - 'tests/test_verification_golden.py'
+permissions:
+  contents: write
+jobs:
+  assess:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install evaluation dependencies
+        run: python -m pip install -r evals/requirements-evals.txt
+      - name: Golden and mutation tests
+        run: python -m pytest -q tests/test_verification_golden.py tests/test_evals_runner_mutation.py
+      - name: Offline Evals (not LLM accuracy)
+        run: python evals/run_evals.py --change "AC traceability dataset / runner revision" --golden "12/12 golden; 16/16 full tests"
+      - name: Commit execution results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add evals/results
+          git diff --cached --quiet || git commit -m "test: record AC-linked offline Evals execution"
+          git push origin HEAD:main
