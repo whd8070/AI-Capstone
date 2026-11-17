@@ -12,7 +12,7 @@ meta:
   source_documents:
     - "https://github.com/whd8070/AI-Capstone/blob/main/docs/ontology.yaml"
     - "https://github.com/whd8070/AI-Capstone/blob/main/docs/research/설문조사_응답원본.md"
-  intended_documents: ["docs/PROBLEM.md", "SPEC.md", "README.md", "AGENTS.md", "docs/FINAL_SUBMISSION.md"]
+  intended_documents: ["docs/PROBLEM.md", "docs/SPEC.md", "README.md", "AGENTS.md", "docs/FINAL_SUBMISSION.md"]
   change_summary:
     - "SUR 외 모든 근거 태그를 LOG 하나로 통합. ASM·PRJ 분리 제거."
     - "설문 기반 사용자 도메인과 R-U1~R-U6 관계 ID 유지."
