@@ -57,6 +57,7 @@ Push-Location src/diffusion
 Pop-Location
 & $py -m pip install -r evals/requirements-evals.txt
 & $py -m pytest -q tests/test_verification_golden.py tests/test_evals_runner_mutation.py
+& $py evals/run_formula_evals.py
 & $py evals/run_evals.py --change "local reviewer reproduction" --golden "local tests"
 ```
 

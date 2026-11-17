@@ -227,12 +227,14 @@ AI 설명이 독립 검증에 실패하거나 호출 오류가 발생하면 **�
 | 평가 데이터셋 | [evals/evalset.jsonl](evals/evalset.jsonl) | 36건(정상 8, 경계 10, 실패 10, 금지 8) |
 | Evals 러너 | [evals/run_evals.py](evals/run_evals.py) | 개별 실행·채점·집계 |
 | 수식 제안 에이전트 회귀 | [src/diffusion/test_kr_formula_agent.py](src/diffusion/test_kr_formula_agent.py), [test_kr_formula.py](src/diffusion/test_kr_formula.py) | 제안·수정·성향 검출·거부·fallback 확인 |
+| 수식 제안 Evals 24건 | [evals/formula_evalset.jsonl](evals/formula_evalset.jsonl), [run_formula_evals.py](evals/run_formula_evals.py) | 정상·경계·실패·금지 각 6건, 모의 Claude 응답·실제 수식 검사 루프 |
+| 수식 Evals 결과·이력 | [evals/results/](evals/results/)의 `formula_*.json`, `formula_history.csv` | 실행별 케이스·범주별 합불 기록 |
 | 실제 결과·이력 | [evals/results/](evals/results/) | 케이스별 실제 출력과 `history.csv` |
 | Judge 초안 및 위임 기록 | [evals/judge_prompt.md](evals/judge_prompt.md), [docs/prompts/delegation_evals.md](docs/prompts/delegation_evals.md) | 미사용 judge 설계·결함 주입 검증 이력 |
 
 ### 자동 평가와 선택적인 로컬 재실행
 
-골든 테스트·수식 제안 유닛 테스트·오프라인 Evals는 **GitHub Actions(`.github/workflows/evals-ci.yml`)가 자동 실행하고 결과를 기록**합니다. 사용자가 CLI를 반복 실행할 필요는 없습니다. 아래 명령은 선택적인 로컬 재현용이며, 실제 Claude의 수식 제안·설명 동작은 로그인된 웹 UI에서 확인합니다.
+골든 테스트·수식 제안 유닛 테스트·**수식 제안 24건 및 설명 검증 36건 오프라인 Evals**는 **GitHub Actions(`.github/workflows/evals-ci.yml`)가 자동 실행하고 결과를 기록**합니다. 사용자가 CLI를 반복 실행할 필요는 없습니다. 아래 명령은 선택적인 로컬 재현용이며, 실제 Claude의 수식 제안·설명 동작은 로그인된 웹 UI에서 확인합니다.
 
 ### 동일한 검사를 직접 실행하는 방법
 
@@ -244,6 +246,7 @@ cd src/diffusion
 python -m unittest -v test_kr_formula test_kr_formula_agent
 cd ../..
 python -m pytest -q tests/test_verification_golden.py tests/test_evals_runner_mutation.py
+python evals/run_formula_evals.py
 python evals/run_evals.py --change "manual local review" --golden "12/12 golden, 16/16 tests"
 ```
 
