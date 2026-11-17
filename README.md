@@ -232,3 +232,42 @@ MAX_WEIGHT = clip(0.20 / (1 + 2 * REPORT_RISK), 0.03, 0.20)
 ## 7. 리뷰 기간
 
 **2026년 11월 11일~18일** 동안 리뷰어는 `main` 브랜치, 포함된 샘플 데이터와 위 로컬 설치 절차를 기준으로 체험할 수 있습니다. 별도 공개 서버나 공용 테스트 계정은 제공하지 않습니다. 실행 방법 또는 샘플이 바뀌면 README를 함께 갱신합니다.
+
+## 8. 중간평가 2 — 교수 평가용 검증 산출물 (2026-11-17)
+
+**평가 정본:** 루트 [SPEC.md](SPEC.md)의 `0. 중간평가 2 — MVP 적용 AC` 표가 이번 MVP 대상 AC를 명시합니다. 현 웹 MVP는 **20거래일/20슬리브** 방식이며, SPEC의 장기 설계(10거래일/10오프셋)와 구분합니다.
+
+| 준비 항목 | 확인할 경로 | 평가 연결 |
+|---|---|---|
+| MVP 구현·설치 | 본 README §2~4, `src/diffusion/kr_report_web.py` | 핵심 흐름과 실행 안내 |
+| MVP 대상 AC | [SPEC.md](SPEC.md) §0 | 포함·제외 및 검증 상태 표시 |
+| 골든 케이스 | [tests/harness/golden_cases.yaml](tests/harness/golden_cases.yaml) | AC-06a, AC-07d, AC-07g |
+| 골든 하니스 | [tests/test_verification_golden.py](tests/test_verification_golden.py) | YAML을 읽어 실제 검증 함수를 호출 |
+| 결함 주입 검사 | [tests/test_evals_runner_mutation.py](tests/test_evals_runner_mutation.py), [위임 기록](docs/prompts/delegation_verification_golden.md) | 의도적 오답이 실패로 판정되는지 검사 |
+| Evals 설계 | [evals/EVAL_DESIGN.md](evals/EVAL_DESIGN.md) | AC별 지표·계산식·합격선·한계 |
+| 평가 데이터셋 | [evals/evalset.jsonl](evals/evalset.jsonl) | 36건(정상 8, 경계 10, 실패 10, 금지 8) |
+| Evals 러너 | [evals/run_evals.py](evals/run_evals.py) | 개별 실행·채점·집계 |
+| 실제 결과·이력 | [evals/results/](evals/results/) | 케이스별 실제 출력과 `history.csv` |
+| Judge 초안 및 위임 기록 | [evals/judge_prompt.md](evals/judge_prompt.md), [docs/prompts/delegation_evals.md](docs/prompts/delegation_evals.md) | 미사용 judge 설계·결함 주입 검증 이력 |
+
+### 동일한 검사를 직접 실행하는 방법
+
+Python 3.11 환경에서 저장소 루트 기준:
+
+```bash
+python -m pip install -r evals/requirements-evals.txt
+python -m pytest -q tests/test_verification_golden.py tests/test_evals_runner_mutation.py
+python evals/run_evals.py --change "manual local review" --golden "12/12 golden, 16/16 tests"
+```
+
+**평가용 핵심 시나리오:**
+
+| 입력 상황 | 기대 결과 | 관련 AC |
+|---|---|---|
+| 5개 설명 영역과 확인된 포트폴리오 근거 제공 | 형식 검사 `PASS` | AC-06a |
+| 설명에서 '불확실성' 섹션을 삭제 | `FAIL`, `MISSING_SECTION:불확실성` | AC-06a |
+| 모든 주장에 검증 판정이 존재하고 출처 ID가 인용됨 | 모의 검증 응답 주입 시 게시 게이트 `PASS` | AC-07d |
+| 주장 하나를 `reject` 또는 미판정으로 주입 | 게시 게이트 `FAIL` | AC-07d |
+| 근거 없는 `warn` 주입 | `FAIL`, `UNEXPLAINED_WARN` | AC-07g |
+
+이 검사는 **실제 구현의 형식·게시 차단 게이트를 모의 검증 응답으로 평가**합니다. 36/36 통과는 Claude/Codex의 금융 사실 검출 정확도, 실제 포트폴리오 수익성 또는 전체 SPEC 달성을 의미하지 않습니다. **AC-07a~c(P30/M30/G30)**와 사람 judge 라벨 일치율은 별도 시험이 필요하며, 미실행 항목은 합격으로 표시하지 않습니다.
