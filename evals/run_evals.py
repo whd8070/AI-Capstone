@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SET = ROOT / "evals" / "evalset.jsonl"
 RESULTS = ROOT / "evals" / "results"
 HISTORY = RESULTS / "history.csv"
-EXPECTED_KEYS = {"id", "category", "query", "expect", "graders", "note"}
+EXPECTED_KEYS = {"id", "category", "query", "expect", "graders", "note", "ac"}
 
 
 def read_cases(path: Path) -> list[dict]:
@@ -34,7 +34,7 @@ def read_cases(path: Path) -> list[dict]:
     if len({c.get("category") for c in rows} - {"normal"}) < 2:
         raise ValueError("at least two non-normal categories required")
     for c in rows:
-        if EXPECTED_KEYS - set(c) or c["graders"] != ["code"]:
+        if EXPECTED_KEYS - set(c) or not str(c.get("ac", "")).startswith("AC-") or c["graders"] != ["code"]:
             raise ValueError("missing required eval keys or unsupported graders")
         if not isinstance(c["query"], dict) or c["expect"].get("status") not in ("PASS", "FAIL", "LOCAL_RULE_ONLY"):
             raise ValueError("invalid query or expected status")
