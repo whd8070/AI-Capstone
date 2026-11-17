@@ -1,8 +1,12 @@
 name: AC-linked offline Evals
+
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     paths:
+      - '.github/workflows/evals-ci.yml'
+      - 'docs/SPEC.md'
       - 'src/diffusion/kr_report_verification.py'
       - 'src/diffusion/kr_formula.py'
       - 'src/diffusion/kr_formula_agent.py'
@@ -11,33 +15,27 @@ on:
       - 'src/diffusion/kr_formula_sample_signals.csv'
       - 'src/diffusion/test_kr_formula.py'
       - 'src/diffusion/test_kr_formula_agent.py'
-      - 'docs/SPEC.md'
-      - '.github/workflows/evals-ci.yml'
       - 'evals/EVAL_DESIGN.md'
       - 'evals/requirements-evals.txt'
       - 'evals/evalset.jsonl'
       - 'evals/formula_evalset.jsonl'
       - 'evals/run_formula_evals.py'
-      - 'README.md'
-      - 'AGENTS.md'
-      - 'docs/PROBLEM.md'
-      - 'docs/ontology.yaml'
-      - 'docs/FINAL_SUBMISSION.md'
-      - 'src/diffusion/README_KR_REPORT_WEB.md'
       - 'evals/run_evals.py'
       - 'evals/verification_adapter.py'
       - 'tests/harness/golden_cases.yaml'
       - 'tests/test_verification_golden.py'
       - 'tests/test_formula_golden.py'
-      - 'docs/prompts/delegation_formula_golden.md'
-      - 'docs/reviews/EVAL_APPROVAL.md'
-      - 'docs/reviews/WEB_E2E_CHECKLIST.md'
       - 'tests/test_evals_runner_mutation.py'
-concurrency:
-  group: evals-main
-  cancel-in-progress: true
+
+# Running tests must not create commits on the evaluated branch.
+# CI results are downloadable artifacts; previously submitted baseline JSON/CSV stays in Git.
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: offline-evals-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   assess:
     runs-on: ubuntu-latest
@@ -46,26 +44,40 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
       - name: Install evaluation dependencies
-        run: python -m pip install -r evals/requirements-evals.txt
-      - name: Install formula-agent regression dependencies
-        run: python -m pip install numpy pandas
-      - name: Validate final domain ontology
-        run: python -c "import yaml; data=yaml.safe_load(open('docs/ontology.yaml',encoding='utf-8')); assert isinstance(data,dict) and 'project_log' in data"
+        run: |
+          python -m pip install -r evals/requirements-evals.txt
+          python -m pip install numpy pandas
+
+      - name: Validate canonical SPEC and ontology
+        run: |
+          test -f docs/SPEC.md
+          test ! -f SPEC.md
+          python -c "import yaml; data=yaml.safe_load(open('docs/ontology.yaml',encoding='utf-8')); assert isinstance(data,dict) and 'project_log' in data"
+
       - name: Formula safety and agent-loop regression tests
         working-directory: src/diffusion
         run: python -m unittest -v test_kr_formula test_kr_formula_agent
+
       - name: Formula-agent deterministic Evals (24 cases)
         run: python evals/run_formula_evals.py
+
       - name: Golden and mutation tests
         run: python -m pytest -q tests/test_verification_golden.py tests/test_formula_golden.py tests/test_evals_runner_mutation.py
+
       - name: Offline Evals (not LLM accuracy)
-        run: python evals/run_evals.py --change "automated offline verification regression" --golden "12 verifier golden + 14 formula golden, pytest"
-      - name: Commit execution results
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add evals/results
-          git diff --cached --quiet || git commit -m "test: record AC-linked offline Evals execution"
-          git pull --rebase origin main
-          git push origin HEAD:main
+        run: python evals/run_evals.py --change "automated offline verification regression" --golden "12 verifier + 14 formula golden cases"
+
+      # Upload the results of this exact run without writing back to main.
+      # This avoids non-fast-forward errors when multiple commits arrive close together.
+      - name: Archive execution results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: offline-evals-${{ github.run_id }}
+          path: |
+            evals/results/*.json
+            evals/results/*.csv
+          if-no-files-found: warn
+          retention-days: 30

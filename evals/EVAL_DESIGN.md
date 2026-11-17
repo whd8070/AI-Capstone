@@ -85,7 +85,7 @@ python evals/run_evals.py --change 'baseline' --golden '12/12 passed'
 
 ## 8. 최종 제출 및 변경관리
 
-최종 제품 기능과 AC 정본은 [SPEC.md](../docs/SPEC.md), 평가자용 사용자 동선은 [docs/FINAL_SUBMISSION.md](../docs/FINAL_SUBMISSION.md) 및 [README.md](../README.md)다. 골든·Evals 데이터 정답을 테스트 결과에 맞춰 임의 변경하지 않는다. CI 실행에는 실제 변경 커밋과 개별 결과 파일을 남긴다. 실측하지 않은 실제 Claude 품질은 별도 측정 대상으로 구분하여 제출한다.
+최종 제품 기능과 AC 정본은 [SPEC.md](../docs/SPEC.md), 평가자용 사용자 동선은 [docs/FINAL_SUBMISSION.md](../docs/FINAL_SUBMISSION.md) 및 [README.md](../README.md)다. 골든·Evals 데이터 정답을 테스트 결과에 맞춰 임의 변경하지 않는다. CI 실행은 실제 변경 커밋과 연결하고, 결과 JSON·CSV는 Actions Artifacts로 보존한다. 기존에 저장소에 반영한 제출 기준선 JSON·이력은 그대로 유지한다. 테스트 실행이 무조건 Git에 새 커밋을 푸시하지 않는다. 실측하지 않은 실제 Claude 품질은 별도 측정 대상으로 구분하여 제출한다.
 
 
 ## 9. 최종 골든 검증 보강과 수용 범위 (2026-11-17)

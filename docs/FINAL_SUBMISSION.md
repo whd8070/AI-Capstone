@@ -46,7 +46,7 @@
 | `evals/evalset.jsonl` | 36개 평가 사례 (AC 연결) |
 | `evals/run_evals.py` | 실제 함수 호출·채점·개별 결과/집계 저장 |
 | `evals/results/history.csv` | 실행별 변경·데이터셋 버전·통과율 |
-| `.github/workflows/evals-ci.yml` | 수식/검증 코드 변경 시 자동 회귀 및 Evals 실행 |
+| `.github/workflows/evals-ci.yml` | 수식/검증 코드 변경 시 자동 회귀, 결과는 Actions Artifacts로 보관; 제출 기준선 JSON·CSV는 Git 유지 |
 
 Windows Python 3.11 로컬에서 재현하고 싶다면 저장소 루트 기준:
 
@@ -66,7 +66,7 @@ Pop-Location
 ## D. 제출 기준일과 결과 상태
 
 - 교수 평가 기준은 **2026-11-18 저장소 `main`**이다. 버전 범위는 기존 기능을 새로 개발하는 것이 아니라 **구현된 네 탭으로 확정**했다.
-- 기존 CI 기록에는 수식 문법/에이전트 루프 단위 검사, 골든, Evals가 포함되어 있다. 최신 워크플로 성공 여부는 [Actions](https://github.com/whd8070/AI-Capstone/actions)에서 확인한다.
+- 기존 CI 기록에는 수식 문법/에이전트 루프 단위 검사, 골든, Evals가 포함되어 있다. 최신 워크플로 성공 여부와 실행별 내려받을 수 있는 결과(Artifacts)는 [Actions](https://github.com/whd8070/AI-Capstone/actions)에서 확인한다. 검증 실행은 Git에 자동 커밋하지 않으므로 연속 문서 수정 시 푸시 충돌을 일으키지 않는다.
 - **실제 CLI E2E, 실사용자 품질, 의미 검증 정확도는 자동 테스트가 아니라 별도 관찰·라벨링 영역**이며, 실행하지 않은 항목의 성공 사례를 만들어내지 않는다.
 
 ## E. 팀 제출 점검

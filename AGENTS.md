@@ -79,7 +79,7 @@
 | 수식 파서·수식 제안 루프 | `cd src/diffusion` 후 `python -m unittest -v test_kr_formula test_kr_formula_agent` | 모의 Claude 응답 기반 문법·거부·피드백·대체·성향 테스트 |
 | 골든·오답 주입 | `python -m pytest -q tests/test_verification_golden.py tests/test_evals_runner_mutation.py` | 설명 게시 게이트 정상·경계·금지 규칙 |
 | 오프라인 Evals | `python evals/run_evals.py --change "review"` | `evals/evalset.jsonl` 36개 모의 검증기 사례·결과 저장 |
-| CI | `.github/workflows/evals-ci.yml` | 코드·검증 산출물 변경 시 자동 실행 및 이력 커밋 |
+| CI | `.github/workflows/evals-ci.yml` | 코드·평가 입력 변경 시 자동 실행, 실행 결과는 Actions Artifacts로 보존(기존 Git 이력 유지) |
 | 실제 UI·Claude 사용 | `README.md` 체험 시나리오 | 사람이 로컬 웹에서 별도 확인할 항목 |
 
 현재 36개 오프라인 Evals가 통과하더라도 **실제 Claude/Codex의 의미 검증 정확도, 외부 시세 실행 가능성, GUI 전 과정을 증명하지 않는다**. 실측되지 않은 항목을 완료라고 기재하지 않는다.
