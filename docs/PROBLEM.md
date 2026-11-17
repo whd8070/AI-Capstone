@@ -1,6 +1,6 @@
 # 문제 정의서 — 개미구조대 최종 MVP (2026-11-17)
 
-> **정본:** [SPEC.md](../SPEC.md) v4.0 · [README.md](../README.md) · [docs/ontology.yaml](ontology.yaml). 이전 연구 가설과 사용자 관찰의 근거 ID(SUR/LOG)는 유지한다.
+> **정본:** [SPEC.md](SPEC.md) v4.0 · [README.md](../README.md) · [docs/ontology.yaml](ontology.yaml). 이전 연구 가설과 사용자 관찰의 근거 ID(SUR/LOG)는 유지한다.
 
 ## 1. 사용자 문제
 
@@ -46,7 +46,7 @@
 
 ## 6. 수용과 제출 기준
 
-제품 범위와 AC는 [SPEC.md](../SPEC.md) `5, 사용자 단계·설치와 기대 결과는 [README.md](../README.md), 교수 제출 근거는 [docs/FINAL_SUBMISSION.md](FINAL_SUBMISSION.md) 및 [evals/EVAL_DESIGN.md](../evals/EVAL_DESIGN.md)에 있다.
+제품 범위와 AC는 [SPEC.md](SPEC.md) §5, 사용자 단계·설치와 기대 결과는 [README.md](../README.md), 교수 제출 근거는 [docs/FINAL_SUBMISSION.md](FINAL_SUBMISSION.md) 및 [evals/EVAL_DESIGN.md](../evals/EVAL_DESIGN.md)에 있다.
 
 **최종 범위:** 이미 구현된 네 화면, Claude 기반 성향 수식 제안/검사/적용, REPORT 수집, 포트폴리오·백테스트·설명·검증. 별도의 기획 로드맵을 제출 범위에 포함하지 않는다.
 
