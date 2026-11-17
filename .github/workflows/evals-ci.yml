@@ -30,7 +30,7 @@ on:
 # Running tests must not create commits on the evaluated branch.
 # CI results are downloadable artifacts; previously submitted baseline JSON/CSV stays in Git.
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: offline-evals-${{ github.ref }}
@@ -41,6 +41,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -81,3 +83,24 @@ jobs:
             evals/results/*.csv
           if-no-files-found: warn
           retention-days: 30
+
+      # Publish only when this is still the latest source revision.
+      # The final CI run after edits publishes its results once.
+      - name: Publish verified Evals results to main
+        if: success()
+        run: |
+          sleep 8
+          git fetch origin main
+          if [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]; then
+            echo "main advanced during evaluation; skip stale results. A newer run will publish."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add evals/results
+          if git diff --cached --quiet; then
+            echo "No new evaluation files to publish."
+            exit 0
+          fi
+          git commit -m "evals: record results for evaluated source ${GITHUB_SHA:0:12}"
+          git push origin HEAD:main
