@@ -3,7 +3,7 @@
 ## 1. 대상과 기준(사람의 수용 전 확인)
 
 - 기능: 네 문항·추가 요청 → AI/규칙 수식 제안 → 진단·최대 3회 재시도 → 사용자 적용 가능한 안전 수식.
-- 읽기 전용: `SPEC.md` AC-10c/12a/12b/12c, `AGENTS.md`, `tests/harness/golden_cases.yaml`.
+- 읽기 전용: `docs/SPEC.md` AC-10c/12a/12b/12c, `AGENTS.md`, `tests/harness/golden_cases.yaml`.
 - 변경 대상: `tests/test_formula_golden.py` 및 설명 하니스의 케이스 필터(`tests/test_verification_golden.py`).
 - 범위 밖: 실제 Claude API/CLI 정확도, 외부 시세·브라우저 클릭 E2E. AC-12c는 수식 `blend()`의 **계산 값 계약**만 골든으로 보증.
 - 절대 규칙: 기대값을 테스트 성공에 맞춰 바꾸지 않고, skip/xfail로 우회하지 않는다.
