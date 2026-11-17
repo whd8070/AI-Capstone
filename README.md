@@ -208,7 +208,7 @@ AI 설명이 독립 검증에 실패하거나 호출 오류가 발생하면 **�
 
 **사용 권한:** 에이전트 제안을 받으려면 Claude Code CLI 설치·로그인이 필요하지만, 웹 화면에서 버튼으로 사용합니다. 사용자가 매번 터미널에 AI 프롬프트를 입력할 필요는 없습니다. Claude 미연결 시 **규칙으로만 만들기 (LLM 없음)**는 실행 가능합니다.
 
-**회귀 테스트:** `src/diffusion/test_kr_formula.py`, `src/diffusion/test_kr_formula_agent.py`. 에이전트 응답은 제어된 모의값으로 재현 검사하며 실제 Claude 출력 품질과 구분합니다. 최종 AC는 [SPEC.md](SPEC.md) §5의 `AC-10a/10c`, `AC-12a~12c`입니다.
+**회귀 테스트:** `src/diffusion/test_kr_formula.py`, `src/diffusion/test_kr_formula_agent.py`. 에이전트 응답은 제어된 모의값으로 재현 검사하며 실제 Claude 출력 품질과 구분합니다. 최종 AC는 [SPEC.md](docs/SPEC.md) §5의 `AC-10a/10c`, `AC-12a~12c`입니다.
 
 ### 6.2 수식 제안 기능의 사용자 체험
 
@@ -220,16 +220,16 @@ AI 설명이 독립 검증에 실패하거나 호출 오류가 발생하면 **�
 
 ## 7. 평가 및 제출 기준
 
-**2026년 11월 18일 교수 평가용** 기준은 `main` 브랜치의 네 가지 기능, 최종 [SPEC.md](SPEC.md), [최종 제출 안내](docs/FINAL_SUBMISSION.md), [Evals 설계·결과](evals/EVAL_DESIGN.md)입니다. 별도 공개 서버나 공용 테스트 계정은 제공하지 않으며, 로컬 설치 스크립트로 체험합니다. 기능 구현과 테스트 실행 성과는 별도로 표시합니다.
+**2026년 11월 18일 교수 평가용** 기준은 `main` 브랜치의 네 가지 기능, 최종 [SPEC.md](docs/SPEC.md), [최종 제출 안내](docs/FINAL_SUBMISSION.md), [Evals 설계·결과](evals/EVAL_DESIGN.md)입니다. 별도 공개 서버나 공용 테스트 계정은 제공하지 않으며, 로컬 설치 스크립트로 체험합니다. 기능 구현과 테스트 실행 성과는 별도로 표시합니다.
 
 ## 8. 최종 평가 제출 산출물 (2026-11-17)
 
-**평가 정본:** [SPEC.md](SPEC.md) v4.0 §2·§5의 최종 MVP 범위·AC를 따릅니다. 현재 코드 기준은 **20거래일·20슬리브**이며, 수식 제안 에이전트도 최종 MVP의 정식 기능입니다. [docs/FINAL_SUBMISSION.md](docs/FINAL_SUBMISSION.md)가 심사위원용 시작점입니다.
+**평가 정본:** [SPEC.md](docs/SPEC.md) v4.0 §2·§5의 최종 MVP 범위·AC를 따릅니다. 현재 코드 기준은 **20거래일·20슬리브**이며, 수식 제안 에이전트도 최종 MVP의 정식 기능입니다. [docs/FINAL_SUBMISSION.md](docs/FINAL_SUBMISSION.md)가 심사위원용 시작점입니다.
 
 | 준비 항목 | 확인할 경로 | 평가 연결 |
 |---|---|---|
 | MVP 구현·설치 | 본 README §2~4, `src/diffusion/kr_report_web.py` | 핵심 흐름과 실행 안내 |
-| MVP 대상 AC | [SPEC.md](SPEC.md) §5 | 구현 기능별 AC와 증거 수준 표시 |
+| MVP 대상 AC | [SPEC.md](docs/SPEC.md) §5 | 구현 기능별 AC와 증거 수준 표시 |
 | 골든 케이스 | [tests/harness/golden_cases.yaml](tests/harness/golden_cases.yaml) | 설명 12건(AC-06a/07d/07g) + 수식 14건(AC-10c/12a~c) |
 | 골든 하니스 | [tests/test_verification_golden.py](tests/test_verification_golden.py), [tests/test_formula_golden.py](tests/test_formula_golden.py) | 같은 YAML에서 실제 설명·수식 검증 함수를 호출 |
 | 결함 주입 검사 | [tests/test_evals_runner_mutation.py](tests/test_evals_runner_mutation.py), [위임 기록](docs/prompts/delegation_verification_golden.md) | 의도적 오답이 실패로 판정되는지 검사 |
@@ -257,11 +257,13 @@ python -m unittest -v test_kr_formula test_kr_formula_agent
 cd ../..
 python -m pytest -q tests/test_verification_golden.py tests/test_formula_golden.py tests/test_evals_runner_mutation.py
 python evals/run_formula_evals.py
-python evals/run_evals.py --change "manual local review" --golden "12/12 golden, 16/16 tests"
+python evals/run_evals.py --change "manual local review" --golden "26 golden cases; see pytest output"
 ```
 
 **평가용 핵심 시나리오:**
 
+| 입력·행동 | 기대 결과 | 관련 AC |
+|---|---|---|
 | ④에서 네 문항과 추가 요청으로 Claude 수식 제안 | 유효 수식 및 설명·시도 기록을 표시, 실패 시 대체 | AC-12a, AC-12b |
 | ④에서 유효 수식 확정 후 ②·① 다시 실행 | 적용 수식에 따른 재계산; 이전 결과 무효화 | AC-12c |
 | ④에 임의 Python 실행 문자열 입력 | 검사 거부 및 미적용 | AC-10c |
@@ -279,9 +281,3 @@ python evals/run_evals.py --change "manual local review" --golden "12/12 golden,
 이 검사는 **실제 구현의 형식·게시 차단 게이트를 모의 검증 응답으로 평가**합니다. 36/36 통과는 Claude/Codex의 금융 사실 검출 정확도, 실제 포트폴리오 수익성 또는 전체 SPEC 달성을 의미하지 않습니다. **AC-07a~c(P30/M30/G30)**와 사람 judge 라벨 일치율은 별도 시험이 필요하며, 미실행 항목은 합격으로 표시하지 않습니다.
 
 **제출 범위:** 본 서비스는 현재 구현된 네 화면을 최종 기능으로 제시합니다. 실거래 수익·실제 CLI 의미 판단 정확도와 사용자 환경의 E2E 검증 여부는 측정 근거와 분리해 보고합니다.
-
-### 사람 검토와 웹 E2E 증빙
-
-- [평가 기대값·합격선 사람 승인 기록 양식](docs/reviews/EVAL_APPROVAL.md) — **팀 승인 전에는 미승인**. 승인자·날짜를 임의 기입하지 않습니다.
-- [실제 Streamlit E2E 점검표](docs/reviews/WEB_E2E_CHECKLIST.md) — **아직 자동 CI로 브라우저 전체 흐름을 검증하지 않음**. ④ 수식 제안 → ② 포트폴리오 → ① 백테스트 결과를 실제 환경에서 체크하고 첨부합니다.
-- 원래 강의 4의 `docs/SPEC.md` 경로 대신 제품 AC 정본은 저장소 루트 [SPEC.md](SPEC.md)입니다. 예시 파일 위치가 다른 경우 README가 실제 경로를 안내합니다.
