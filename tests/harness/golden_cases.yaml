@@ -134,3 +134,87 @@ cases:
     errors_contain:
     - EVIDENCE_NOT_CITED_IN_PARAGRAPH
   note: AC-07d의 확인된 규칙을 기존 검증 함수에 적용하는 오프라인 게이트 시험
+- id: AG-N01
+  category: normal
+  ac: AC-12a
+  input: {"kind":"formula_agent","profile":{"base":"balanced","trust":"low","report_use":"always","conflict":"average"},"mode":"scripted","outputs":["0.8*(0.5*mom + 0.5*pair) + 0.2*report"]}
+  expect: {"status":"OK","source":"agent","formula":"0.8*(0.5*mom + 0.5*pair) + 0.2*report","attempts":1,"rejected":0,"issues":0}
+  note: "사용자 낮은 리포트 신뢰: 에이전트의 최초 유효 제안을 실제 검사기로 수용"
+- id: AG-N02
+  category: normal
+  ac: AC-12a
+  input: {"kind":"formula_agent","profile":{"base":"balanced","trust":"mid","report_use":"always","conflict":"average"},"mode":"scripted","outputs":["0.5*(0.5*mom + 0.5*pair) + 0.5*report"]}
+  expect: {"status":"OK","source":"agent","formula":"0.5*(0.5*mom + 0.5*pair) + 0.5*report","attempts":1,"rejected":0,"issues":0}
+  note: "기본 성향이 기본 결합 수식으로 이어지는지 확인"
+- id: AG-N03
+  category: normal
+  ac: AC-12a
+  input: {"kind":"formula_agent","profile":{"base":"balanced","trust":"low","report_use":"always","conflict":"average"},"mode":"scripted","outputs":["0.8*(0.5*mom + 0.5*pair) + 0.2*report"],"note":"목표가보다 가격 흐름 중심으로 설명해줘"}
+  expect: {"status":"OK","source":"agent","formula":"0.8*(0.5*mom + 0.5*pair) + 0.2*report","attempts":1,"prompt_contains":"목표가보다 가격 흐름 중심으로 설명해줘"}
+  note: "자연어 메모가 명령으로 실행되지 않고 제안 문맥에 포함되는지 확인"
+- id: AG-N04
+  category: normal
+  ac: AC-12a
+  input: {"kind":"formula_agent","profile":{"base":"balanced","trust":"low","report_use":"always","conflict":"average"},"mode":"rule","outputs":[]}
+  expect: {"status":"OK","source":"rule","formula":"0.8*(0.5*mom + 0.5*pair) + 0.2*report","attempts":0,"rejected":0}
+  note: "AI 계정 없이 규칙 기반으로 사용 가능한 수식 반환"
+- id: AG-B01
+  category: boundary
+  ac: AC-12b
+  input: {"kind":"formula_agent","profile":{"base":"balanced","trust":"low","report_use":"always","conflict":"average"},"mode":"scripted","outputs":["0.2*(0.5*mom + 0.5*pair) + 0.8*report","0.8*(0.5*mom + 0.5*pair) + 0.2*report"]}
+  expect: {"status":"OK","source":"agent","formula":"0.8*(0.5*mom + 0.5*pair) + 0.2*report","attempts":2,"rejected":0,"prompt_contains":"문제점:"}
+  note: "수식은 유효하나 성향과 맞지 않으면 피드백 후 재제안"
+- id: AG-B02
+  category: boundary
+  ac: AC-12a
+  input: {"kind":"formula_agent","profile":{"base":"balanced","trust":"low","report_use":"always","conflict":"average"},"mode":"scripted","outputs":["0.8*(0.5*mom + 0.5*pair) + 0.2*report"],"note":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}
+  expect: {"status":"OK","source":"agent","attempts":1,"note_truncated":true}
+  note: "추가 메모 길이 300자 제한"
+- id: AG-B03
+  category: boundary
+  ac: AC-12b
+  input: {"kind":"formula_agent","profile":{"base":"balanced","trust":"unknown","report_use":"always","conflict":"average"},"mode":"scripted","outputs":["0.8*(0.5*mom + 0.5*pair) + 0.2*report"]}
+  expect: {"status":"ERROR","error_type":"ValueError","attempts":0}
+  note: "정의되지 않은 선택지는 검사 단계에서 명시적 오류"
+- id: AG-F01
+  category: failure
+  ac: AC-12b
+  input: {"kind":"formula_agent","profile":{"base":"balanced","trust":"low","report_use":"always","conflict":"average"},"mode":"scripted","outputs":["import os","0.8*(0.5*mom + 0.5*pair) + 0.2*report"]}
+  expect: {"status":"OK","source":"agent","formula":"0.8*(0.5*mom + 0.5*pair) + 0.2*report","attempts":2,"rejected":1,"prompt_contains":"검사기 거부"}
+  note: "문법 오류를 다음 Claude 요청에 전달하고 유효 수식으로 복구"
+- id: AG-F02
+  category: failure
+  ac: AC-12b
+  input: {"kind":"formula_agent","profile":{"base":"balanced","trust":"low","report_use":"always","conflict":"average"},"mode":"scripted","outputs":["import os","open('x')","mom.real"]}
+  expect: {"status":"OK","source":"rule","formula":"0.8*(0.5*mom + 0.5*pair) + 0.2*report","attempts":3,"rejected":3}
+  note: "3회 연속 수식 오류가 나면 규칙 기반 대체"
+- id: AG-F03
+  category: failure
+  ac: AC-12b
+  input: {"kind":"formula_agent","profile":{"base":"balanced","trust":"low","report_use":"always","conflict":"average"},"mode":"unavailable","outputs":[]}
+  expect: {"status":"OK","source":"rule","formula":"0.8*(0.5*mom + 0.5*pair) + 0.2*report","attempts":0,"stop_reason":true}
+  note: "모델 CLI 장애 시 규칙 기반 대체하고 오류 상태 표시"
+- id: AG-P01
+  category: prohibited
+  ac: AC-10c
+  input: {"kind":"formula_agent","profile":{"base":"balanced","trust":"low","report_use":"always","conflict":"average"},"mode":"scripted","outputs":["__import__('os').system('calc')"],"max_attempts":1}
+  expect: {"status":"OK","source":"rule","formula":"0.8*(0.5*mom + 0.5*pair) + 0.2*report","attempts":1,"rejected":1}
+  note: "코드 실행 시도 거부, 절대 코드로 평가하지 않음"
+- id: AG-P02
+  category: prohibited
+  ac: AC-10c
+  input: {"kind":"formula_agent","profile":{"base":"balanced","trust":"low","report_use":"always","conflict":"average"},"mode":"scripted","outputs":["eval('mom')"],"max_attempts":1}
+  expect: {"status":"OK","source":"rule","formula":"0.8*(0.5*mom + 0.5*pair) + 0.2*report","attempts":1,"rejected":1}
+  note: "eval 호출 거부"
+- id: AG-P03
+  category: prohibited
+  ac: AC-10c
+  input: {"kind":"formula_agent","profile":{"base":"balanced","trust":"low","report_use":"always","conflict":"average"},"mode":"scripted","outputs":["mom.__class__"],"max_attempts":1}
+  expect: {"status":"OK","source":"rule","formula":"0.8*(0.5*mom + 0.5*pair) + 0.2*report","attempts":1,"rejected":1}
+  note: "속성 접근 거부"
+- id: AG-I01
+  category: normal
+  ac: AC-12c
+  input: {"kind":"formula_score","formula":"0.8*mom + 0.2*report","mom":[1,-1,0.5,-0.5,0],"pair":[-1,1,0,0.5,-0.5],"report":[0,1.5,-1.5,0,0.7]}
+  expect: {"status":"PASS","after_score":[0.772,-0.528,0.072,-0.428,0.112],"differs_from_default":true}
+  note: "수식 확정 후 엔진이 이용하는 blend()의 수치 계약 검증; Streamlit 버튼 전체 E2E와는 별개"

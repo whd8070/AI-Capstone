@@ -86,3 +86,12 @@ python evals/run_evals.py --change 'baseline' --golden '12/12 passed'
 ## 8. 최종 제출 및 변경관리
 
 최종 제품 기능과 AC 정본은 [SPEC.md](../SPEC.md), 평가자용 사용자 동선은 [docs/FINAL_SUBMISSION.md](../docs/FINAL_SUBMISSION.md) 및 [README.md](../README.md)다. 골든·Evals 데이터 정답을 테스트 결과에 맞춰 임의 변경하지 않는다. CI 실행에는 실제 변경 커밋과 개별 결과 파일을 남긴다. 실측하지 않은 실제 Claude 품질은 별도 측정 대상으로 구분하여 제출한다.
+
+
+## 9. 최종 골든 검증 보강과 수용 범위 (2026-11-17)
+
+- **별도 14건 수식 골든**을 `tests/harness/golden_cases.yaml`에 고정하여 기존 12건 설명 골든과 같은 정답 데이터 파일에서 관리한다. `tests/test_formula_golden.py`가 실제 `propose()/rule_based()/blend()`를 호출한다.
+- 정상 제안 AC-12a, 피드백·오류·대체 AC-12b, 금지 코드 AC-10c, 수식 계산값 계약 AC-12c를 각각 검증한다. **AC-12c의 브라우저 버튼 클릭 → 포트폴리오/백테스트 E2E는 별도 사람 확인이 필요**하다.
+- 독립 결함 주입: `kr_formula_agent.diagnose`를 검사 회피 변이로 바꾸면 악성 수식의 거부 횟수가 줄고 기대식이 달라져 골든이 실패해야 한다. 테스트 종료 후 임시 변이 복원.
+- 24개 수식 Evals의 AC 추적을 수정했다. **FN01~06과 FB01~02는 AC-12a**, 나머지 수정·예외 상황은 AC-12b, 금지 수식은 AC-10c로 분류한다. 과거 실행 JSON은 해당 시점의 데이터셋 해시와 함께 그대로 보존한다.
+- 케이스 기대값·합격선의 최종 소유자는 사람이다. `docs/reviews/EVAL_APPROVAL.md`는 서명용 **미승인 양식**이며 AI가 사람을 대신해 승인할 수 없다.

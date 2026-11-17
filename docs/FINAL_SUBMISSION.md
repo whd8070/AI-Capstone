@@ -78,3 +78,10 @@ Pop-Location
 5. 자료의 민감정보·원문 저작권·계정 토큰이 공개 저장소에 포함되지 않았는지 확인한다.
 
 사용자 데모 실패·실제 CLI 미로그인·Evals 실측 미실시 사실은 명확히 기록한다. **최종 기능 범위 확정은 모든 환경의 실행 성공이나 모델 투자 성과 인증이 아니다.**
+
+## F. 최종 골든·사람 검토 추가 근거
+
+- `tests/harness/golden_cases.yaml`: 설명 검증 12건 + 성향 수식 제안 14건. 수식 하니스는 `tests/test_formula_golden.py`다.
+- `docs/prompts/delegation_formula_golden.md`: AC-12a/b/c·AC-10c 하니스 위임 범위, 검사 회피 결함 주입 및 해석.
+- `docs/reviews/EVAL_APPROVAL.md`: 사람 담당자의 기준 검토·서명란. **아직 검토·승인 완료로 표시하지 않는다.**
+- `docs/reviews/WEB_E2E_CHECKLIST.md`: 사용자 브라우저 흐름 기록. **실제로 수행한 후에만 완료 표시한다.**

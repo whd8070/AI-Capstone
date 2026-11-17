@@ -20,10 +20,10 @@ def test_golden_case_contract():
     assert {c["category"] for c in DATA["cases"]} >= {"normal", "boundary", "prohibited"}
     for c in DATA["cases"]:
         assert c.get("ac") and c.get("input") and c.get("expect")
-        assert c["expect"].get("status") in {"PASS", "FAIL", "LOCAL_RULE_ONLY"}
+        assert c["expect"].get("status") in {"PASS", "FAIL", "LOCAL_RULE_ONLY", "OK", "ERROR"}
 
 
-@pytest.mark.parametrize("case", DATA["cases"], ids=lambda c: c["id"])
+@pytest.mark.parametrize("case", [c for c in DATA["cases"] if c["input"]["kind"] in ("rules", "verify", "local")], ids=lambda c: c["id"])
 def test_verification_golden(case):
     actual = execute(case["input"])
     passed, problems = grade(actual, case["expect"])

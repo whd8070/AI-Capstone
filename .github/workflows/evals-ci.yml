@@ -28,6 +28,10 @@ on:
       - 'evals/verification_adapter.py'
       - 'tests/harness/golden_cases.yaml'
       - 'tests/test_verification_golden.py'
+      - 'tests/test_formula_golden.py'
+      - 'docs/prompts/delegation_formula_golden.md'
+      - 'docs/reviews/EVAL_APPROVAL.md'
+      - 'docs/reviews/WEB_E2E_CHECKLIST.md'
       - 'tests/test_evals_runner_mutation.py'
 permissions:
   contents: write
@@ -51,9 +55,9 @@ jobs:
       - name: Formula-agent deterministic Evals (24 cases)
         run: python evals/run_formula_evals.py
       - name: Golden and mutation tests
-        run: python -m pytest -q tests/test_verification_golden.py tests/test_evals_runner_mutation.py
+        run: python -m pytest -q tests/test_verification_golden.py tests/test_formula_golden.py tests/test_evals_runner_mutation.py
       - name: Offline Evals (not LLM accuracy)
-        run: python evals/run_evals.py --change "automated offline verification regression" --golden "12 golden cases; 16 pytest assertions"
+        run: python evals/run_evals.py --change "automated offline verification regression" --golden "12 verifier golden + 14 formula golden, pytest"
       - name: Commit execution results
         run: |
           git config user.name "github-actions[bot]"
