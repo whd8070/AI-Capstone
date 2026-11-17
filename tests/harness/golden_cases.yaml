@@ -1,0 +1,136 @@
+# AC-linked deterministic golden cases; case expectations require team review.
+cases:
+- id: N01
+  category: normal
+  ac: AC-06a
+  input:
+    kind: rules
+  expect:
+    status: PASS
+    errors_empty: true
+    claim_count: 5
+  note: AC-06a의 확인된 규칙을 기존 검증 함수에 적용하는 오프라인 게이트 시험
+- id: N04
+  category: normal
+  ac: AC-07d
+  input:
+    kind: verify
+    reviewer: all_pass
+  expect:
+    status: PASS
+    errors_empty: true
+    claim_count: 5
+  note: AC-07d의 확인된 규칙을 기존 검증 함수에 적용하는 오프라인 게이트 시험
+- id: N05
+  category: normal
+  ac: AC-07g
+  input:
+    kind: verify
+    reviewer: warn_valid
+  expect:
+    status: PASS
+    errors_empty: true
+    claim_count: 5
+  note: AC-07g의 확인된 규칙을 기존 검증 함수에 적용하는 오프라인 게이트 시험
+- id: N06
+  category: normal
+  ac: AC-07d
+  input:
+    kind: local
+  expect:
+    status: LOCAL_RULE_ONLY
+    errors_empty: true
+    claim_count: 5
+  note: AC-07d의 확인된 규칙을 기존 검증 함수에 적용하는 오프라인 게이트 시험
+- id: B01
+  category: boundary
+  ac: AC-06a
+  input:
+    kind: rules
+    missing_section: 불확실성
+  expect:
+    status: FAIL
+    errors_contain:
+    - MISSING_SECTION:불확실성
+    claim_count: 4
+  note: AC-06a의 확인된 규칙을 기존 검증 함수에 적용하는 오프라인 게이트 시험
+- id: B03
+  category: boundary
+  ac: AC-06a
+  input:
+    kind: rules
+    no_claims: true
+  expect:
+    status: FAIL
+    errors_contain:
+    - NO_CLAIMS
+    claim_count: 0
+  note: AC-06a의 확인된 규칙을 기존 검증 함수에 적용하는 오프라인 게이트 시험
+- id: B04
+  category: boundary
+  ac: AC-06a
+  input:
+    kind: rules
+    extra_decimal: true
+  expect:
+    status: FAIL
+    errors_contain:
+    - DECIMALS_OVER_TWO_PLACES
+  note: AC-06a의 확인된 규칙을 기존 검증 함수에 적용하는 오프라인 게이트 시험
+- id: B09
+  category: boundary
+  ac: AC-06a
+  input:
+    kind: local
+    missing_section: 비중 결정
+  expect:
+    status: FAIL
+    errors_contain:
+    - MISSING_SECTION:비중 결정
+    claim_count: 4
+  note: AC-06a의 확인된 규칙을 기존 검증 함수에 적용하는 오프라인 게이트 시험
+- id: F01
+  category: failure
+  ac: AC-07d
+  input:
+    kind: verify
+    reviewer: one_reject
+  expect:
+    status: FAIL
+    errors_contain:
+    - REJECTED_OR_UNGROUNDED
+  note: AC-07d의 확인된 규칙을 기존 검증 함수에 적용하는 오프라인 게이트 시험
+- id: F03
+  category: failure
+  ac: AC-07d
+  input:
+    kind: verify
+    reviewer: missing_verdict
+  expect:
+    status: FAIL
+    errors_contain:
+    - INCOMPLETE_OR_DUPLICATED_CLAIM_VERDICTS
+  note: AC-07d의 확인된 규칙을 기존 검증 함수에 적용하는 오프라인 게이트 시험
+- id: F05
+  category: failure
+  ac: AC-07d
+  input:
+    kind: verify
+    reviewer: unknown_reference
+  expect:
+    status: FAIL
+    errors_contain:
+    - UNKNOWN_EVIDENCE
+  note: AC-07d의 확인된 규칙을 기존 검증 함수에 적용하는 오프라인 게이트 시험
+- id: P01
+  category: prohibited
+  ac: AC-07d
+  input:
+    kind: verify
+    reference: report:123
+    reviewer: all_pass
+  expect:
+    status: FAIL
+    errors_contain:
+    - EVIDENCE_NOT_CITED_IN_PARAGRAPH
+  note: AC-07d의 확인된 규칙을 기존 검증 함수에 적용하는 오프라인 게이트 시험
