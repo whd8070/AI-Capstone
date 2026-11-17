@@ -33,6 +33,9 @@ on:
       - 'docs/reviews/EVAL_APPROVAL.md'
       - 'docs/reviews/WEB_E2E_CHECKLIST.md'
       - 'tests/test_evals_runner_mutation.py'
+concurrency:
+  group: evals-main
+  cancel-in-progress: true
 permissions:
   contents: write
 jobs:
@@ -64,4 +67,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add evals/results
           git diff --cached --quiet || git commit -m "test: record AC-linked offline Evals execution"
+          git pull --rebase origin main
           git push origin HEAD:main
