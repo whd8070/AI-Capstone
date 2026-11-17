@@ -1,7 +1,7 @@
 # Evals 러너 위임·검증 이력 — 2026-11-17
 
 ## 위임 내용
-`evals/EVAL_DESIGN.md`, `evals/evalset.jsonl` 및 `SPEC.md`의 대상 AC를 읽되 **판정 기준과 기대값은 수정하지 말 것**. Python 러너는 오프라인 검증 게이트에 36개 구조화 입력을 보내 실제 출력을 받고, `status`, `errors`의 기대값과 비교하여 범주별 분모·분자, 케이스별 실제 출력을 저장한다. 실행마다 JSON 새 파일과 `history.csv` 새 행을 만든다. 실제 LLM 판정 정확도를 측정한 것처럼 기록하지 않는다.
+`evals/EVAL_DESIGN.md`, `evals/evalset.jsonl` 및 `docs/SPEC.md`의 대상 AC를 읽되 **판정 기준과 기대값은 수정하지 말 것**. Python 러너는 오프라인 검증 게이트에 36개 구조화 입력을 보내 실제 출력을 받고, `status`, `errors`의 기대값과 비교하여 범주별 분모·분자, 케이스별 실제 출력을 저장한다. 실행마다 JSON 새 파일과 `history.csv` 새 행을 만든다. 실제 LLM 판정 정확도를 측정한 것처럼 기록하지 않는다.
 
 ## 실행·결함 주입 기록
 - 명령: `python evals/run_evals.py --change '2026-11-17 first deterministic verification-gate baseline' --golden '12/12 passed (plus loader 1)' --commit 4e68acea3a7abf0d90ca48f5129b023826caad1c`
