@@ -1,7 +1,7 @@
-# 개미구조대 — KR MOM + PAIR + REPORT
+# 개미구조대 — 성향 기반 AI 수식 제안·KR MOM + PAIR + REPORT
 
 
-> **2026학년도 2학기 아주대학교 AI 캡스톤디자인 · 1팀 · MVP 사용자 가이드**  
+> **2026학년도 2학기 아주대학교 AI 캡스톤디자인 · 1팀 · 최종 MVP 제출본 (2026-11-17)**  
 > 테스트에 오류가 발생할 경우 whd8070@ajou.ac.kr로 연락주시면 빠르게 조치하고 회신하도록 하겠습니다.
 
 ## 1. 서비스 소개
@@ -17,7 +17,7 @@
 
 ### 무엇을 해결하나요?
 
-개인 투자자는 가격 흐름, AI 모델 전망, 증권사 리포트를 각각 확인하더라도 **정보를 어떤 기준으로 결합했고, 그 결과 종목 순위와 투자 비중이 왜 달라졌는지** 파악하기 어렵습니다. 이 MVP는 세 정보원을 하나의 포트폴리오 계산 과정에 연결하고 **리포트 반영 전후 결과와 근거**를 비교하도록 돕습니다.
+개인 투자자는 가격 흐름, AI 모델 전망, 증권사 리포트를 각각 확인하더라도 **무엇을 얼마나 신뢰해 결합할지, 그 결과 종목 순위와 투자 비중이 왜 바뀌는지** 판단하기 어렵습니다. 이 최종 MVP는 **투자 수식을 몰라도 네 개 성향 질문과 추가 요청으로 AI 수식을 제안받고**, 검사된 수식을 포트폴리오·백테스트에 적용하여 계산 근거와 변화를 확인하도록 돕습니다.
 
 - **MOM:** 최근 20거래일 수익률에 따른 모멘텀 순위
 - **PAIR:** 동결된 확산모델에서 동일 초기 노이즈를 사용한 Full−Macro 생성 결과의 차이로 만든 순위
@@ -36,7 +36,7 @@
 
 **주의:** 결합 비율은 예상 수익률이나 최종 투자 비중을 그대로 평균하는 값이 아닙니다. 최종 비중은 O 생성 경로 공분산을 이용하는 기존 BL/CVaR 기반 최적화에서 계산합니다. 기본 **PAIR 50%·REPORT 50%**는 MOM 25%·PAIR 25%·REPORT 50%의 순위 점수 결합에 해당합니다.
 
-### 현재 MVP에서 체험할 수 있는 기능
+### 최종 MVP의 네 가지 기능
 
 | 화면 탭 | 기능 |
 | --- | --- |
@@ -96,7 +96,7 @@ bash ./run_mac.sh
 
 **체험 목표:** 미리 제공된 리포트 데이터를 사용해 포트폴리오를 만들고, 같은 기준의 백테스트를 확인한 뒤, 원하는 경우 신규 리포트와 AI 설명을 추가합니다.
 
-**권장 경로:** **② 포트폴리오 → ① 백테스트**부터 체험하세요. **③은 선택 기능**이며 신규 리포트 반영이나 Claude/Codex 설명이 필요한 경우에만 먼저 설정하면 됩니다.
+**권장 경로:** **④ 성향 조사·수식 제안 → ② 포트폴리오 생성 → ① 백테스트 비교** 순서입니다. ④의 Claude 제안은 로그인된 CLI가 필요하지만, 미연결이면 규칙 기반 제안을 사용할 수 있습니다. **③ 리포트 수집은 신규 PDF가 필요한 경우에만 선택**합니다.
 
 ### 사용 전 꼭 확인할 사항
 
@@ -184,7 +184,7 @@ AI 설명이 독립 검증에 실패하거나 호출 오류가 발생하면 **�
 
 **문제가 생기면:** `8501` 접속이 안 될 때는 실행 터미널과 포트 점유 여부를 확인합니다. `ModuleNotFoundError` 등 패키지 문제는 Windows `start_windows.cmd`, macOS `bash ./start_mac.sh`로 설치 상태를 점검합니다. 모델 파일 누락 시 `stable_best.pt`가 실제 파일로 존재하는지 확인하세요. Claude/Codex가 선택되지 않으면 ③ 탭에서 CLI 로그인 상태를 다시 확인합니다. 신규 리포트의 **「선택한 단계 실행」**이 진행되지 않으면 화면의 **실행 전 확인할 사항**을 먼저 해결하세요.
 
-## 6. 현재 구현된 에이전트 수식 제안과 향후 위험 제약 확장
+## 6. 최종 MVP 핵심 기능 — 성향 기반 수식 제안 에이전트
 
 ### 6.1 MVP에 이미 구현된 기능 — ④ 결합 수식 제안 (성향 조사)
 
@@ -198,19 +198,9 @@ AI 설명이 독립 검증에 실패하거나 호출 오류가 발생하면 **�
 
 **사용 권한:** 에이전트 제안을 받으려면 Claude Code CLI 설치·로그인이 필요하지만, 웹 화면에서 버튼으로 사용합니다. 사용자가 매번 터미널에 AI 프롬프트를 입력할 필요는 없습니다. Claude 미연결 시 **규칙으로만 만들기 (LLM 없음)**는 실행 가능합니다.
 
-**현행 회귀 테스트:** `src/diffusion/test_kr_formula.py`, `src/diffusion/test_kr_formula_agent.py`. 테스트에는 가짜 모델 응답을 사용하므로 *실제 Claude 사용성/응답 품질*은 웹에서 별도 확인해야 합니다. 관련 MVP 계약은 [SPEC.md](SPEC.md) §11.6의 `AC-12a~12c`와 `AC-10c`입니다.
+**회귀 테스트:** `src/diffusion/test_kr_formula.py`, `src/diffusion/test_kr_formula_agent.py`. 에이전트 응답은 제어된 모의값으로 재현 검사하며 실제 Claude 출력 품질과 구분합니다. 최종 AC는 [SPEC.md](SPEC.md) §5의 `AC-10a/10c`, `AC-12a~12c`입니다.
 
-### 6.2 아직 미구현인 확장 — 종목별 위험 상한 수식
-
-아래는 **현재 MVP에서 입력해 사용할 수 있는 기능이 아닌 설계 예시**입니다.
-
-```text
-MAX_WEIGHT = clip(0.20 / (1 + 2 * REPORT_RISK), 0.03, 0.20)
-```
-
-`REPORT_RISK`는 향후 리포트 위험 정보를 정량화할 변수이고, 위 `MAX_WEIGHT`가 개별 종목 위험 제약으로 최적화에 연결되는 부분은 아직 장기 목표입니다. 프리셋·위험 수식 전체와 종목별 `MAX_WEIGHT` 미리보기, 고급 위험관리 비교는 구현 완료로 표시하지 않습니다. 상세 목표 및 AC는 [SPEC.md §11](SPEC.md#11-사용자-정의-수식-기반-포트폴리오-확장-v31)에 있습니다.
-
-### 6.3 수식 제안 기능의 사용자 체험
+### 6.2 수식 제안 기능의 사용자 체험
 
 1. ④ 탭에서 네 가지 성향을 고릅니다.
 2. Claude 로그인 상태에서 **에이전트에게 제안받기** 또는 **규칙으로만 만들기**를 누릅니다.
@@ -218,30 +208,31 @@ MAX_WEIGHT = clip(0.20 / (1 + 2 * REPORT_RISK), 0.03, 0.20)
 4. **이 수식을 백테스트·포트폴리오에 적용**을 누른 뒤 ② 포트폴리오·① 백테스트에서 해당 수식으로 새로 계산되는지 확인합니다.
 5. 사이드바의 **기본 수식으로 되돌리기**로 원상 복구합니다.
 
-## 7. 리뷰 기간
+## 7. 평가 및 제출 기준
 
-**2026년 11월 11일~18일** 동안 리뷰어는 `main` 브랜치, 포함된 샘플 데이터와 위 로컬 설치 절차를 기준으로 체험할 수 있습니다. 별도 공개 서버나 공용 테스트 계정은 제공하지 않습니다. 실행 방법 또는 샘플이 바뀌면 README를 함께 갱신합니다.
+**2026년 11월 18일 교수 평가용** 기준은 `main` 브랜치의 네 가지 기능, 최종 [SPEC.md](SPEC.md), [최종 제출 안내](docs/FINAL_SUBMISSION.md), [Evals 설계·결과](evals/EVAL_DESIGN.md)입니다. 별도 공개 서버나 공용 테스트 계정은 제공하지 않으며, 로컬 설치 스크립트로 체험합니다. 기능 구현과 테스트 실행 성과는 별도로 표시합니다.
 
-## 8. 중간평가 2 — 교수 평가용 검증 산출물 (2026-11-17)
+## 8. 최종 평가 제출 산출물 (2026-11-17)
 
-**평가 정본:** 루트 [SPEC.md](SPEC.md)의 `0. 중간평가 2 — MVP 적용 AC` 표가 이번 MVP 대상 AC를 명시합니다. 현 웹 MVP는 **20거래일/20슬리브** 방식이며, SPEC의 장기 설계(10거래일/10오프셋)와 구분합니다.
+**평가 정본:** [SPEC.md](SPEC.md) v4.0 §2·§5의 최종 MVP 범위·AC를 따릅니다. 현재 코드 기준은 **20거래일·20슬리브**이며, 수식 제안 에이전트도 최종 MVP의 정식 기능입니다. [docs/FINAL_SUBMISSION.md](docs/FINAL_SUBMISSION.md)가 심사위원용 시작점입니다.
 
 | 준비 항목 | 확인할 경로 | 평가 연결 |
 |---|---|---|
 | MVP 구현·설치 | 본 README §2~4, `src/diffusion/kr_report_web.py` | 핵심 흐름과 실행 안내 |
-| MVP 대상 AC | [SPEC.md](SPEC.md) §0 | 포함·제외 및 검증 상태 표시 |
+| MVP 대상 AC | [SPEC.md](SPEC.md) §5 | 구현 기능별 AC와 증거 수준 표시 |
 | 골든 케이스 | [tests/harness/golden_cases.yaml](tests/harness/golden_cases.yaml) | AC-06a, AC-07d, AC-07g |
 | 골든 하니스 | [tests/test_verification_golden.py](tests/test_verification_golden.py) | YAML을 읽어 실제 검증 함수를 호출 |
 | 결함 주입 검사 | [tests/test_evals_runner_mutation.py](tests/test_evals_runner_mutation.py), [위임 기록](docs/prompts/delegation_verification_golden.md) | 의도적 오답이 실패로 판정되는지 검사 |
 | Evals 설계 | [evals/EVAL_DESIGN.md](evals/EVAL_DESIGN.md) | AC별 지표·계산식·합격선·한계 |
 | 평가 데이터셋 | [evals/evalset.jsonl](evals/evalset.jsonl) | 36건(정상 8, 경계 10, 실패 10, 금지 8) |
 | Evals 러너 | [evals/run_evals.py](evals/run_evals.py) | 개별 실행·채점·집계 |
+| 수식 제안 에이전트 회귀 | [src/diffusion/test_kr_formula_agent.py](src/diffusion/test_kr_formula_agent.py), [test_kr_formula.py](src/diffusion/test_kr_formula.py) | 제안·수정·성향 검출·거부·fallback 확인 |
 | 실제 결과·이력 | [evals/results/](evals/results/) | 케이스별 실제 출력과 `history.csv` |
 | Judge 초안 및 위임 기록 | [evals/judge_prompt.md](evals/judge_prompt.md), [docs/prompts/delegation_evals.md](docs/prompts/delegation_evals.md) | 미사용 judge 설계·결함 주입 검증 이력 |
 
 ### 자동 평가와 선택적인 로컬 재실행
 
-결정적 골든 테스트·오프라인 Evals는 **GitHub Actions(`.github/workflows/evals-ci.yml`)가 자동 실행하여 결과를 저장**합니다. 사용자가 반드시 CLI에서 반복 실행할 필요는 없습니다. 아래 명령은 문제가 생겼을 때 로컬에서 재현하기 위한 선택적 방법입니다. 실제 Claude의 수식 제안·설명 품질은 로그인된 웹 UI에서 별도 E2E 확인합니다.
+골든 테스트·수식 제안 유닛 테스트·오프라인 Evals는 **GitHub Actions(`.github/workflows/evals-ci.yml`)가 자동 실행하고 결과를 기록**합니다. 사용자가 CLI를 반복 실행할 필요는 없습니다. 아래 명령은 선택적인 로컬 재현용이며, 실제 Claude의 수식 제안·설명 동작은 로그인된 웹 UI에서 확인합니다.
 
 ### 동일한 검사를 직접 실행하는 방법
 
@@ -249,11 +240,20 @@ Python 3.11 환경에서 저장소 루트 기준:
 
 ```bash
 python -m pip install -r evals/requirements-evals.txt
+cd src/diffusion
+python -m unittest -v test_kr_formula test_kr_formula_agent
+cd ../..
 python -m pytest -q tests/test_verification_golden.py tests/test_evals_runner_mutation.py
 python evals/run_evals.py --change "manual local review" --golden "12/12 golden, 16/16 tests"
 ```
 
 **평가용 핵심 시나리오:**
+
+| ④에서 네 문항과 추가 요청으로 Claude 수식 제안 | 유효 수식 및 설명·시도 기록을 표시, 실패 시 대체 | AC-12a, AC-12b |
+| ④에서 유효 수식 확정 후 ②·① 다시 실행 | 적용 수식에 따른 재계산; 이전 결과 무효화 | AC-12c |
+| ④에 임의 Python 실행 문자열 입력 | 검사 거부 및 미적용 | AC-10c |
+
+다음 표는 설명 검증 게이트의 기존 평가 사례입니다.
 
 | 입력 상황 | 기대 결과 | 관련 AC |
 |---|---|---|
@@ -264,3 +264,5 @@ python evals/run_evals.py --change "manual local review" --golden "12/12 golden,
 | 근거 없는 `warn` 주입 | `FAIL`, `UNEXPLAINED_WARN` | AC-07g |
 
 이 검사는 **실제 구현의 형식·게시 차단 게이트를 모의 검증 응답으로 평가**합니다. 36/36 통과는 Claude/Codex의 금융 사실 검출 정확도, 실제 포트폴리오 수익성 또는 전체 SPEC 달성을 의미하지 않습니다. **AC-07a~c(P30/M30/G30)**와 사람 judge 라벨 일치율은 별도 시험이 필요하며, 미실행 항목은 합격으로 표시하지 않습니다.
+
+**제출 범위:** 본 서비스는 현재 구현된 네 화면을 최종 기능으로 제시합니다. 실거래 수익·실제 CLI 의미 판단 정확도와 사용자 환경의 E2E 검증 여부는 측정 근거와 분리해 보고합니다.

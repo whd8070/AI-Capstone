@@ -16,6 +16,14 @@ on:
       - 'evals/EVAL_DESIGN.md'
       - 'evals/requirements-evals.txt'
       - 'evals/evalset.jsonl'
+      - 'evals/formula_evalset.jsonl'
+      - 'evals/run_formula_evals.py'
+      - 'README.md'
+      - 'AGENTS.md'
+      - 'docs/PROBLEM.md'
+      - 'docs/ontology.yaml'
+      - 'docs/FINAL_SUBMISSION.md'
+      - 'src/diffusion/README_KR_REPORT_WEB.md'
       - 'evals/run_evals.py'
       - 'evals/verification_adapter.py'
       - 'tests/harness/golden_cases.yaml'
@@ -38,6 +46,8 @@ jobs:
       - name: Formula safety and agent-loop regression tests
         working-directory: src/diffusion
         run: python -m unittest -v test_kr_formula test_kr_formula_agent
+      - name: Formula-agent deterministic Evals (24 cases)
+        run: python evals/run_formula_evals.py
       - name: Golden and mutation tests
         run: python -m pytest -q tests/test_verification_golden.py tests/test_evals_runner_mutation.py
       - name: Offline Evals (not LLM accuracy)
