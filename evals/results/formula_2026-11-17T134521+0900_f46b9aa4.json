@@ -1,0 +1,607 @@
+{
+  "run_id": "2026-11-17T134521+0900_f46b9aa4",
+  "scope": "scripted Claude agent-loop and formula parser; NOT live LLM",
+  "dataset_sha256": "39e89aa538def08e8a13e4230460802438aac633a1304e551d45b5097a64d50e",
+  "pass": 24,
+  "total": 24,
+  "metrics": {
+    "boundary": {
+      "pass": 6,
+      "total": 6
+    },
+    "failure": {
+      "pass": 6,
+      "total": 6
+    },
+    "normal": {
+      "pass": 6,
+      "total": 6
+    },
+    "prohibited": {
+      "pass": 6,
+      "total": 6
+    }
+  },
+  "cases": [
+    {
+      "id": "FN01",
+      "category": "normal",
+      "ac": "AC-12b",
+      "expected": {
+        "status": "OK",
+        "source": "agent",
+        "attempts": 1,
+        "errors": 0,
+        "issues": 0
+      },
+      "actual": {
+        "status": "OK",
+        "source": "agent",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 1,
+        "errors": 0,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 1,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FN02",
+      "category": "normal",
+      "ac": "AC-12b",
+      "expected": {
+        "status": "OK",
+        "source": "agent",
+        "attempts": 1,
+        "errors": 0,
+        "issues": 0
+      },
+      "actual": {
+        "status": "OK",
+        "source": "agent",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 1,
+        "errors": 0,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 1,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FN03",
+      "category": "normal",
+      "ac": "AC-12b",
+      "expected": {
+        "status": "OK",
+        "source": "agent",
+        "attempts": 1,
+        "errors": 0,
+        "issues": 0
+      },
+      "actual": {
+        "status": "OK",
+        "source": "agent",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 1,
+        "errors": 0,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 1,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FN04",
+      "category": "normal",
+      "ac": "AC-12b",
+      "expected": {
+        "status": "OK",
+        "source": "agent",
+        "attempts": 1,
+        "errors": 0,
+        "issues": 0
+      },
+      "actual": {
+        "status": "OK",
+        "source": "agent",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 1,
+        "errors": 0,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 1,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FN05",
+      "category": "normal",
+      "ac": "AC-12b",
+      "expected": {
+        "status": "OK",
+        "source": "agent",
+        "attempts": 1,
+        "errors": 0,
+        "issues": 0
+      },
+      "actual": {
+        "status": "OK",
+        "source": "agent",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 1,
+        "errors": 0,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 1,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FN06",
+      "category": "normal",
+      "ac": "AC-12b",
+      "expected": {
+        "status": "OK",
+        "source": "agent",
+        "attempts": 1,
+        "errors": 0,
+        "issues": 0
+      },
+      "actual": {
+        "status": "OK",
+        "source": "agent",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 1,
+        "errors": 0,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 1,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FB01",
+      "category": "boundary",
+      "ac": "AC-12b",
+      "expected": {
+        "status": "OK",
+        "source": "agent",
+        "attempts": 1,
+        "errors": 0,
+        "issues": 0
+      },
+      "actual": {
+        "status": "OK",
+        "source": "agent",
+        "formula": "0.5*(0.5*mom + 0.5*pair) + 0.5*report",
+        "attempts": 1,
+        "errors": 0,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 1,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FB02",
+      "category": "boundary",
+      "ac": "AC-12b",
+      "expected": {
+        "status": "OK",
+        "source": "agent",
+        "attempts": 1,
+        "errors": 0,
+        "issues": 0
+      },
+      "actual": {
+        "status": "OK",
+        "source": "agent",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 1,
+        "errors": 0,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 1,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FB03",
+      "category": "boundary",
+      "ac": "AC-12b",
+      "expected": {
+        "status": "OK",
+        "source": "agent",
+        "attempts": 2,
+        "errors": 0,
+        "issues": 0,
+        "feedback": "문제점"
+      },
+      "actual": {
+        "status": "OK",
+        "source": "agent",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 2,
+        "errors": 0,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 2,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FB04",
+      "category": "boundary",
+      "ac": "AC-12b",
+      "expected": {
+        "status": "OK",
+        "source": "rule",
+        "attempts": 0
+      },
+      "actual": {
+        "status": "OK",
+        "source": "rule",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 0,
+        "errors": 0,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 0,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FB05",
+      "category": "boundary",
+      "ac": "AC-12b",
+      "expected": {
+        "status": "ERROR"
+      },
+      "actual": {
+        "status": "ERROR",
+        "error": "ValueError",
+        "message": "trust 값은 ['low', 'mid', 'high'] 중 하나여야 합니다."
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FB06",
+      "category": "boundary",
+      "ac": "AC-12b",
+      "expected": {
+        "status": "OK",
+        "source": "rule",
+        "attempts": 1,
+        "errors_min": 1
+      },
+      "actual": {
+        "status": "OK",
+        "source": "rule",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 1,
+        "errors": 1,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 1,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FF01",
+      "category": "failure",
+      "ac": "AC-12b",
+      "expected": {
+        "status": "OK",
+        "source": "rule",
+        "attempts": 0
+      },
+      "actual": {
+        "status": "OK",
+        "source": "rule",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 0,
+        "errors": 0,
+        "issues": 0,
+        "stop_reason": true,
+        "usage_calls": 0,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FF02",
+      "category": "failure",
+      "ac": "AC-12b",
+      "expected": {
+        "status": "OK",
+        "source": "agent",
+        "attempts": 2,
+        "errors_min": 1,
+        "feedback": "검사기 거부"
+      },
+      "actual": {
+        "status": "OK",
+        "source": "agent",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 2,
+        "errors": 1,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 2,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FF03",
+      "category": "failure",
+      "ac": "AC-12b",
+      "expected": {
+        "status": "OK",
+        "source": "agent",
+        "attempts": 2,
+        "errors_min": 1,
+        "feedback": "검사기 거부"
+      },
+      "actual": {
+        "status": "OK",
+        "source": "agent",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 2,
+        "errors": 1,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 2,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FF04",
+      "category": "failure",
+      "ac": "AC-12b",
+      "expected": {
+        "status": "OK",
+        "source": "rule",
+        "attempts": 3,
+        "errors_min": 3
+      },
+      "actual": {
+        "status": "OK",
+        "source": "rule",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 3,
+        "errors": 3,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 3,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FF05",
+      "category": "failure",
+      "ac": "AC-12b",
+      "expected": {
+        "status": "OK",
+        "source": "rule",
+        "attempts": 1,
+        "errors_min": 1
+      },
+      "actual": {
+        "status": "OK",
+        "source": "rule",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 1,
+        "errors": 1,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 1,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FF06",
+      "category": "failure",
+      "ac": "AC-12b",
+      "expected": {
+        "status": "OK",
+        "source": "agent",
+        "attempts": 2,
+        "errors": 0,
+        "issues": 0,
+        "feedback": "문제점"
+      },
+      "actual": {
+        "status": "OK",
+        "source": "agent",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 2,
+        "errors": 0,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 2,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FP01",
+      "category": "prohibited",
+      "ac": "AC-10c",
+      "expected": {
+        "status": "OK",
+        "source": "agent",
+        "attempts": 2,
+        "errors_min": 1
+      },
+      "actual": {
+        "status": "OK",
+        "source": "agent",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 2,
+        "errors": 1,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 2,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FP02",
+      "category": "prohibited",
+      "ac": "AC-10c",
+      "expected": {
+        "status": "OK",
+        "source": "rule",
+        "attempts": 1,
+        "errors_min": 1
+      },
+      "actual": {
+        "status": "OK",
+        "source": "rule",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 1,
+        "errors": 1,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 1,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FP03",
+      "category": "prohibited",
+      "ac": "AC-10c",
+      "expected": {
+        "status": "OK",
+        "source": "rule",
+        "attempts": 1,
+        "errors_min": 1
+      },
+      "actual": {
+        "status": "OK",
+        "source": "rule",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 1,
+        "errors": 1,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 1,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FP04",
+      "category": "prohibited",
+      "ac": "AC-10c",
+      "expected": {
+        "status": "OK",
+        "source": "rule",
+        "attempts": 1,
+        "errors_min": 1
+      },
+      "actual": {
+        "status": "OK",
+        "source": "rule",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 1,
+        "errors": 1,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 1,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FP05",
+      "category": "prohibited",
+      "ac": "AC-10c",
+      "expected": {
+        "status": "OK",
+        "source": "rule",
+        "attempts": 1,
+        "errors_min": 1
+      },
+      "actual": {
+        "status": "OK",
+        "source": "rule",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 1,
+        "errors": 1,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 1,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    },
+    {
+      "id": "FP06",
+      "category": "prohibited",
+      "ac": "AC-10c",
+      "expected": {
+        "status": "OK",
+        "source": "agent",
+        "attempts": 1,
+        "errors": 0,
+        "issues": 0
+      },
+      "actual": {
+        "status": "OK",
+        "source": "agent",
+        "formula": "0.8*(0.5*mom + 0.5*pair) + 0.2*report",
+        "attempts": 1,
+        "errors": 0,
+        "issues": 0,
+        "stop_reason": false,
+        "usage_calls": 1,
+        "has_diag": true
+      },
+      "pass": true,
+      "failures": []
+    }
+  ]
+}
