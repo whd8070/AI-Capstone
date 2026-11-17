@@ -1,97 +1,56 @@
-# AI-Capstone Evals 설계 v2 — 최종 MVP 수식 제안·설명 검증
+# Evals 설계 — 최종 MVP (2026-11-17)
 
-- 적용 스펙: `docs/SPEC.md` v4.0 §5의 **최종 MVP AC**. ① **성향 기반 수식 제안 검증(AC-12a/12b, AC-10c)**과 ② **설명 게시 게이트 검증(AC-06a/07d/07g)**을 별개 트랙으로 측정한다.
-- 대상 구현: `src/diffusion/kr_report_verification.py`의 `rule_errors()`, `verify()`, `local_status()`
-- 데이터셋: `evals/evalset.jsonl`, 36건 (정상 8 / 경계 10 / 실패 10 / 금지 8)
-- 범위: **오프라인 결정적 수식 제안 루프 + 설명 게시 게이트**. 실제 Claude/Codex의 독립 모델 정확도, 브라우저 E2E 품질, 백테스트 수익성은 측정하지 않는다.
-- 초기 버전의 판정 기준과 절대 규칙 케이스는 현재 SPEC에 이미 명시된 기준을 옮긴 **승인 대기 초안**이다. 팀이 확인 후 확정해야 한다.
+**정본 AC:** [docs/SPEC.md `5](../docs/SPEC.md). 두 Evals는 **결정적 코드 안전성·회귀 검사**이며, 실제 Claude/Codex의 금융 사실 판단 정확도나 투자성과를 측정하지 않습니다.
 
-## 1. 지표, 합격선, AC
+## 1. 평가 지표·합격선
 
-| 지표 | 계산 방법 | 채점기 | 이 평가의 합격선 | AC |
-|---|---|---|---|---|
-| 정상 요청 통과율 | 정상 범주의 기대 PASS 또는 LOCAL_RULE_ONLY 일치 건수 / 정상 건수 | 코드 | 100% (고정 회귀) | AC-06a, AC-07d |
-| 경계 입력 검출률 | 경계 범주에서 예상한 오류 유형을 실제로 반환한 건수 / 경계 건수 | 코드 | 100% (게이트) | AC-06a |
-| 검증 실패 차단률 | 실패 범주에서 게시 FAIL 및 예상 오류 유형 검출 건수 / 실패 건수 | 코드 | 100% (게시 절대 규칙) | AC-07d, AC-07g |
-| 금지 행동 차단률 | 금지 범주에서 게시 FAIL 및 예상 오류 검출 건수 / 금지 건수 | 코드 | 100% (게시 절대 규칙) | AC-06a, AC-07d |
-| 케이스별 정합성 | 기대 status, 오류 코드 접두부, 주장 수, 콘텐츠 SHA-256 존재를 모두 만족한 비율 | 코드 | 100% (고정 회귀) | AC-06a, AC-07d |
+| 평가 범위 | AC | 지표(기대 결과 일치 건수 / 해당 범주 건수) | 합격선 |
+|---|---|---|---|
+| 설명의 필수 5개 영역·형식 | AC-06a | 정상 응답의 필수 항목 충족률 | 100% |
+| 설명의 경계 입력 | AC-06a | 누락·비정상 수치·길이 초과 등 기대 오류 탐지율 | 100% |
+| 설명 검증 실패·금지 행동 | AC-07d, AC-07g | 거부·미판정·근거 없는 경고의 게시 차단률 | 100% |
+| 수식 정상 제안 | AC-12a | 제안 출처·시도 횟수·진단 결과의 기대값 일치 | 6/6 |
+| 수식 경계 입력 | AC-12a, AC-12b | 긴 메모·성향 오류·재시도·규칙 대체의 기대값 일치 | 6/6 |
+| 수식 실패 복구 | AC-12b | CLI 오류·무효 수식·재시도·대체 일치 | 6/6 |
+| 금지 수식 차단 | AC-10c | 임의 코드·속성 접근 등 거부/안전 대체 | 6/6 |
 
-지표 목표는 SPEC의 필수 영역 100%, 게시 시 미검증 주장의 최종 노출 0건이라는 **절대 규칙**에 근거한다. 회귀 세트의 100% 달성은 범위 밖 사례나 모델 의미 정확도 100%를 의미하지 않는다.
+**합격선 근거:** 임의 코드 실행 금지·미검증 AI 설명 게시 차단·고정 골든 정답의 재현은 절대 규칙이므로 100%를 적용합니다. 고정된 테스트 사례 통과가 실제 모델의 성향 적합도 100%를 뜻하지는 않습니다.
 
-**별도 성능 평가가 필요한 AC:** AC-07a(출처 없는 주장 P30 27/30 이상 거부), AC-07b(왜곡 M30 24/30 이상 거부), AC-07c(정상 G30 27/30 이상 유지). 이 세 항목은 **실제 LLM 독립 판정**을 요구하며 이번 36개 오프라인 테스트로 합격 판정하지 않는다. 또한 AC-02b의 TIME50, AC-02c의 EXTRACT100, AC-06d의 REPORT20도 별도 시험 계약이다.
+## 2. 데이터셋과 채점
 
-## 2. 데이터셋과 채점 규칙
+| 평가 | 데이터셋 | 케이스 구성 | 실행 |
+|---|---|---|---|
+| 설명 검증 게이트 | [evalset.jsonl](evalset.jsonl) | **36건**: 정상 8, 경계 10, 실패 10, 금지 8 | [run_evals.py](run_evals.py) |
+| 수식 제안 루프 | [formula_evalset.jsonl](formula_evalset.jsonl) | **24건**: 정상 6, 경계 6, 실패 6, 금지 6 | [run_formula_evals.py](run_formula_evals.py) |
+| 결정적 골든 | [golden_cases.yaml](../tests/harness/golden_cases.yaml) | **26건**: 설명 12 + 수식 14 | [설명 하니스](../tests/test_verification_golden.py), [수식 하니스](../tests/test_formula_golden.py) |
 
-JSONL 각 행은 `id`, `category`, `query`, `expect`, `graders`, `note`, `ac`를 가진다. `ac`는 `docs/SPEC.md`의 수용 기준 식별자이며, 러너는 누락 또는 잘못된 접두부를 오류로 처리한다. `query`는 이 서비스가 대화형 챗봇이 아닌 점을 반영한 **검증 단계의 구조화된 테스트 입력**이다. `kind`는 `rules`, `verify`, `local`이다.
+설명 JSONL은 `id/category/query/expect/graders/note/ac` 필드를 가지며, `rules`·`verify`·`local` 유형의 구조화 입력을 실제 `kr_report_verification` 함수에 전달합니다. `verify()`의 모델 판정 부분만 통제된 **모의 검증기 응답**으로 대체하고, 코드 채점기로 `status`·오류 코드·주장 수 등을 검사합니다.
 
-- 정상 8건: 5개 섹션, 출처 ID 기재, 검증기 정상 판정, 근거가 있는 경고, 로컬 해설의 구분.
-- 경계 10건: 섹션/본문 누락, 소수점 3자리 초과, NaN·Inf·None, 길이 초과.
-- 실패 10건: 단일·전체 reject, 일부·중복 판정, 비존재 근거, 근거 빈값, 단락의 근거 미인용, 근거 없는 warn, 검증 타임아웃, 이상 verdict.
-- 금지 8건: 다른 근거로 허위 통과, 부정확한 수치·누락값·중복/미검증 판정의 게시 차단.
+수식 JSONL은 `id/category/ac/mode/profile/outputs/note/max_attempts/expect` 필드를 가집니다. 실제 `kr_formula_agent.propose()`를 호출하되 Claude 응답만 사전 고정된 응답으로 대체합니다. 실제 수식 파서·진단기를 통해 문법 오류, 피드백, 최대 3회 재시도·규칙 대체를 검사합니다. 정상 제안은 AC-12a, 오류·대체는 AC-12b, 금지 입력은 AC-10c에 연결합니다.
 
-**검증기 대체(run double):** `verify()`의 `runner` 인자에 의도적으로 통제된 판정을 주입한다. 이는 `verify()`의 게시 게이트 기능이 불량 판정을 차단하는지 측정하는 수단이지 **Claude/Codex의 오류 검출 성공률을 측정한 것이 아니다.** 실제 LLM 호출은 발생하지 않는다.
+기대 정답을 함수에 그대로 반환하거나 예외를 PASS 처리하지 않습니다. **AC-12c의 골든은 수식 `blend()`의 수치 계산까지만 검증**하며, ④에서 적용 버튼을 누른 뒤 ②·①까지 이어지는 브라우저 E2E는 별도 확인이 필요합니다.
 
-코드 채점은 실제 반환값을 `expect.status`, `expect.errors_contain`(오류 코드 접두부), 필요 시 주장 수와 오류 비어 있음 여부에 비교한다. 알 수 없는 채점기, 실행 예외, 미지원 구조는 실패로 집계한다. `expect`를 함수에 전달해 그 값을 그대로 돌려주는 방식은 금지한다.
+## 3. 실행·기록·기준선
 
-## 3. LLM-as-judge 구분
-
-`evals/judge_prompt.md`는 **향후 정성 평가용 버전관리 초안**이다. 현재 러너는 `["code"]`만 사용하고 judge를 호출하지 않는다. 따라서 judge 일치율은 **측정 안 함(N/A)**이며, `evals/judge_labels.jsonl`은 사람이 실제 출력에 먼저 라벨하기 전까지 만들지 않는다. 사람 라벨 대신 AI가 자동 생성한 라벨을 넣지 않는다.
-
-향후에는 실제 보고서·검증 출력의 사실 근거 연결과 설명 유용성을 평가할 때 정성적 judge를 사용한다. 사람이 judge 결과를 보기 전에 20개 이상 라벨한 후 80% 이상 일치율이 나오기 전에는 judge 점수를 품질 근거로 쓰지 않는다. 코드로 검증 가능한 수치·헤더·출처 ID는 judge에 맡기지 않는다.
-
-## 4. 러너 흐름, 재현과 기록
-
-```
+```bash
 python -m pip install -r evals/requirements-evals.txt
-python -m pytest -q tests/test_verification_golden.py tests/test_evals_runner_mutation.py
-python evals/run_evals.py --change 'baseline' --golden '12/12 passed'
+python -m pip install numpy pandas
+(cd src/diffusion && python -m unittest -v test_kr_formula test_kr_formula_agent)
+python -m pytest -q tests/test_verification_golden.py tests/test_formula_golden.py tests/test_evals_runner_mutation.py
+python evals/run_formula_evals.py
+python evals/run_evals.py --change "manual reproduction" --golden "26 golden cases"
 ```
 
-러너: JSONL 로드·스키마 검증 → 실제 `kr_report_verification` 함수 호출 → 코드 채점 → 범주별 분자/분모 집계 → `evals/results/<timestamp>_<id>.json` 저장 → `results/history.csv`에 한 행 추가. `run_id`, Git 커밋, 변경 설명, 데이터셋 건수·SHA-256, 모델 및 judge 상태, 골든 시험 상태, 케이스별 실제 출력과 합불을 보존한다.
+각 러너는 케이스별 **실제 출력·기대값·합불**, 범주별 분자·분모를 JSON으로 저장합니다. 설명 실행은 [history.csv](results/history.csv), 수식 실행은 [formula_history.csv](results/formula_history.csv)에 누적하며 데이터셋 SHA-256으로 버전을 구분합니다. 설명 결과에는 평가 소스 커밋도 기록됩니다.
 
-결과 파일은 실행마다 새로 작성하며 기존 기록을 덮어쓰지 않는다. **이 비교 세트는 오프라인 게이트에만 해당하므로 모델·프롬프트 수정에 따른 의미 검증 향상으로 해석하면 안 된다.** 데이터셋 해시·모드·judge 버전·환경이 동일한 결과끼리만 추이를 비교한다. 최초 baseline에서 관측한 통과율은 스펙의 보편적 품질 보증이 아니다.
+**검증된 기준선:** [GitHub Actions #44023933245](https://github.com/whd8070/AI-Capstone/actions/runs/44023933245) · 평가 소스 `9f1941654b32c99e922af4b60d899f586dd31fc3` · 결과 저장 커밋 `edce0d3`. pytest **32/32**, 수식 유닛 테스트 **13건**, 수식 Evals **24/24**, 설명 Evals **36/36** 통과. [설명 JSON](results/2026-11-17T142511+0900_10fea90f.json)과 [수식 JSON](results/formula_2026-11-17T142510+0900_7acd874d.json)에 사례별 결과가 남아 있습니다. 결과 저장 커밋은 프로그램·평가 코드를 바꾸지 않았습니다.
 
-## 5. 첫 실행 및 후속 과제
+[자동 평가 워크플로](../.github/workflows/evals-ci.yml)는 새 결과를 Actions Artifact로 보존하고, **평가한 소스 커밋이 여전히 최신 `main`일 때만** 결과 JSON·CSV를 Git에 커밋합니다. 더 새로운 커밋이 존재하면 오래된 실행 결과를 푸시하지 않습니다.
 
-첫 실행은 실제 구현 소스의 SHA와 대조한 로컬 복사본에서 수행했고, 실행 커밋 식별자는 원본 `main`의 SHA로 표시했다. 해당 복사본의 `kr_report_verification.py` blob SHA는 `7835537d46102687cc5116a382a268208422b83f`로 원격 파일의 SHA와 같다. 제출 코드가 원본 구현을 변경하지 않으므로 결과는 그 구현의 오프라인 게이트 검사만 증명한다.
+## 4. Judge 및 측정 제외 범위
 
-후속: (1) 팀원에 의한 지표 합격선·고정 기대값 승인 (2) 실제 CLI 로그인 환경에서 P30/M30/G30을 별도 실행 (3) 설명 판단을 위한 사람 라벨·judge 일치율 기록 (4) 전체 MVP AC 대상 통합 실행 (5) 정식 평가 환경/커밋에서 재측정.
+현재는 **코드 채점만 사용**합니다. [judge_prompt.md](judge_prompt.md)는 미사용 설계안으로, 별도 사람 라벨과 일치율을 측정하지 않았기 때문에 `judge_labels.jsonl`이나 judge 정확도를 제출하지 않습니다.
 
-## 6. 2026-11-17 GitHub Actions 재실행 결과
+P30·M30·G30(실제 LLM의 주장 검증), TIME50·EXTRACT100·REPORT20(별도 수치 시험)은 이번 오프라인 60건으로 실측했다고 주장하지 않습니다. 실제 모델의 성향 적합도·초보자 사용성·투자 성과도 해당 Evals의 측정 대상이 아닙니다.
 
-- 최초 저장소 실행: `36/36` (2026-11-17T131321+0900), 오프라인 게이트 측정.
-- 각 케이스에 명시적인 `ac`를 추가한 후 GitHub Actions 재실행: `36/36` (2026-11-17T131530+0900). 골든 12건 및 변이·유효성 포함 테스트 16건 통과.
-- 결과 원본: `evals/results/2026-11-17T131530+0900_0a215806.json`, 집계 이력: `evals/results/history.csv`.
-- 성공 실행: https://github.com/whd8070/AI-Capstone/actions/runs/44015895337
-- **실측 한계:** 모의 판정 주입을 사용한 게시 게이트의 검증이며, 모델 의미 판단의 정확도는 여전히 미측정. 팀의 사람 검토·승인은 별도로 필요.
-
-
-## 7. 최종 MVP 핵심 기능: 성향 기반 수식 제안 에이전트 Evals
-
-제품은 **네 개 성향 질문과 선택적 추가 요청으로 초보자에게 결합 수식을 제안하는 에이전트**를 최종 MVP 핵심으로 포함한다. 기존 설명 게시 게이트 36건만으로 이 기능의 안전성을 설명할 수 없으므로, 실제 구현 `kr_formula_agent.propose()`, `rule_based()`, `kr_formula.parse()`·`diagnose()` 경로에 대해 **수식 제안 Evals 24건**을 별도 운영한다.
-
-| 지표 | 분모·분자/합격선 | AC |
-|---|---|---|
-| 정상 제안 처리 | 정상 6건 중 기대 source·시도 횟수·검사 통과 건수 / 6, **6/6** | AC-12a |
-| 경계 입력 처리 | 경계 6건 중 300자 초과 메모 제한·성향 필드 오류·수정 루프·규칙 대체의 기대 결과 일치 / 6, **6/6** | AC-12b |
-| 실패 복구 | 실패 6건 중 잘못된 수식·CLI 실패·재시도·대체 경로 결과 일치 / 6, **6/6** | AC-12b |
-| 금지 수식 미적용 | 금지 6건 중 수식 코드 주입 거절 또는 안전한 대체·회복 / 6, **6/6** | AC-10c |
-
-- **사전 고정 데이터:** `evals/formula_evalset.jsonl` (24건: 정상 6, 경계 6, 실패 6, 금지 6; AC 식별자와 기대값 포함).
-- **실행:** `python evals/run_formula_evals.py`, 결과는 `evals/results/formula_<timestamp>.json`, 이력은 `evals/results/formula_history.csv`.
-- **입력:** 실제 `kr_formula_agent`의 코드 실행을 허용하되 Claude 출력은 **사전에 고정된 모의 응답**으로 주입한다. 수식은 실제 AST 검사·표본 신호 진단을 거친다. 성향 피드백 문구, 최대 시도 횟수, 무효 수식 거절·복구·규칙 기반 대체를 코드 채점한다.
-- **결과 해석:** 이 평가의 만점은 **제어 가능한 오류 경로와 수식 게이트의 재현성**만 의미한다. 실제 초보자의 성향 이해도, Claude 모델의 제안 적합도나 실전 투자 결과가 100%라는 뜻이 아니다.
-- **평가 정직성:** 기존 설명 검증 36건과 별도 합산할 때는 `36개 설명 게시 게이트 + 24개 수식 에이전트 오프라인 사례`라고 영역별 분자·분모를 명시한다. 새 통합 지표 하나로 실제 모델 능력을 과장하지 않는다.
-
-## 8. 최종 제출 및 변경관리
-
-최종 제품 기능과 AC 정본은 [SPEC.md](../docs/SPEC.md), 평가자용 사용자 동선은 [docs/FINAL_SUBMISSION.md](../docs/FINAL_SUBMISSION.md) 및 [README.md](../README.md)다. 골든·Evals 데이터 정답을 테스트 결과에 맞춰 임의 변경하지 않는다. CI 실행은 실제 변경 커밋과 연결하고, 결과 JSON·CSV는 Actions Artifacts로 보존한다. 기존에 저장소에 반영한 제출 기준선 JSON·이력은 그대로 유지한다. 테스트 실행이 무조건 Git에 새 커밋을 푸시하지 않는다. 실측하지 않은 실제 Claude 품질은 별도 측정 대상으로 구분하여 제출한다.
-
-
-## 9. 최종 골든 검증 보강과 수용 범위 (2026-11-17)
-
-- **별도 14건 수식 골든**을 `tests/harness/golden_cases.yaml`에 고정하여 기존 12건 설명 골든과 같은 정답 데이터 파일에서 관리한다. `tests/test_formula_golden.py`가 실제 `propose()/rule_based()/blend()`를 호출한다.
-- 정상 제안 AC-12a, 피드백·오류·대체 AC-12b, 금지 코드 AC-10c, 수식 계산값 계약 AC-12c를 각각 검증한다. **AC-12c의 브라우저 버튼 클릭 → 포트폴리오/백테스트 E2E는 별도 사람 확인이 필요**하다.
-- 독립 결함 주입: `kr_formula_agent.diagnose`를 검사 회피 변이로 바꾸면 악성 수식의 거부 횟수가 줄고 기대식이 달라져 골든이 실패해야 한다. 테스트 종료 후 임시 변이 복원.
-- 24개 수식 Evals의 AC 추적을 수정했다. **FN01~06과 FB01~02는 AC-12a**, 나머지 수정·예외 상황은 AC-12b, 금지 수식은 AC-10c로 분류한다. 과거 실행 JSON은 해당 시점의 데이터셋 해시와 함께 그대로 보존한다.
-- 케이스 기대값·합격선은 사람이 정의하는 기준이며, 자동 Evals 성공을 실제 모델의 정확도로 해석하지 않는다.
+결함 주입 기록: [설명 하니스](../docs/prompts/delegation_verification_golden.md) · [수식 하니스](../docs/prompts/delegation_formula_golden.md) · [Evals 러너](../docs/prompts/delegation_evals.md).

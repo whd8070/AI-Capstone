@@ -2,13 +2,13 @@
 
 > 상태: **2026-11-17 최종 제출 기준 구현 범위 확정** · 정본: 이 문서
 >
-> 검증 구분: **구현 존재**, **자동 테스트 통과**, **실제 AI/E2E 실측**은 서로 다른 상태다. 이 문서는 기존 구현을 완성된 MVP의 기능 범위로 정의하며, 실행하지 않은 성능 평가를 통과했다고 주장하지 않는다. 근거: `docs/FINAL_SUBMISSION.md` 및 `evals/EVAL_DESIGN.md`.
+> 검증 구분: **구현 존재**, **자동 테스트 통과**, **실제 AI/E2E 실측**은 서로 다른 상태다. 이 문서는 기존 구현을 완성된 MVP의 기능 범위로 정의하며, 실행하지 않은 성능 평가를 통과했다고 주장하지 않는다. 근거: [최종 제출 안내](FINAL_SUBMISSION.md) 및 [Evals 설계](../evals/EVAL_DESIGN.md).
 
 ## 1. 문제와 최종 제품
 
 금융 정보를 어떻게 결합할지 모르는 초보 투자자가 MOM(주가 흐름), PAIR(확산모델 기반 종목별 신호), REPORT(증권사 리포트 상대 순위)를 일일이 수학식으로 작성하지 않아도, **네 개 성향 선택과 선택적 추가 요청**으로 자신에게 맞는 **순위 신호 결합 수식**을 제안받고 적용할 수 있다. 수식은 실제 포트폴리오와 백테스트에서 사용하며, 종목별 결과와 근거를 확인한다.
 
-**이용자:** 국내 주식의 투자 정보 결합 방식과 계산 근거를 비교하려는 개인/학생. 실제 주문·투자자문·수익 보장은 제공하지 않는다. 초기 설문은 소수 표본의 관찰이며 기능 효용이나 투자 성과가 검증됐다는 뜻이 아니다(`docs/PROBLEM.md`, `docs/ontology.yaml`).
+**이용자:** 국내 주식의 투자 정보 결합 방식과 계산 근거를 비교하려는 개인/학생. 실제 주문·투자자문·수익 보장은 제공하지 않는다. 초기 설문은 소수 표본의 관찰이며 기능 효용이나 투자 성과가 검증됐다는 뜻이 아니다([문제 정의](PROBLEM.md), [온톨로지](ontology.yaml)).
 
 **기능적 완료 정의:** 성향 → 에이전트 또는 규칙 기반 수식 제안 → 코드 검사·재시도 → 사용자 확정 → 포트폴리오/백테스트 재계산 → 로컬/선택적 AI 근거 설명·검증이 한 로컬 웹에서 연결된다. 현재 이 흐름을 MVP 최종 범위로 고정한다.
 
@@ -25,7 +25,7 @@
 
 ## 3. 모델·시점·수치 계약
 
-- 한국 44종목의 고정 유니버스와 동결된 STABLE/PAIR 추론을 사용한다. 웹 기본 추론은 **20거래일 horizon, 20슬리브, K=128, seed=0**이다. 이 문서에는 과거 실험의 10일/10오프셋 수치를 적용하지 않는다.
+- 한국 44종목의 고정 유니버스와 동결된 STABLE/PAIR 추론을 사용한다. 웹 기본 추론은 **20거래일 horizon, 20슬리브, K=128, seed=0**이다. 웹 실행의 수치 기준은 현재 구현을 따른다.
 - 신호 **MOM**은 최근 20거래일 모멘텀 순위, **PAIR**는 동일 초기 노이즈 Full−Macro 생성 결과의 종목별 순위, **REPORT**는 당시 알고 있던 리포트 목표가/시점 종가의 괴리율 순위다.
 - ②의 입력 날짜는 **매수일**이고 이용 가능한 신호는 직전 KRX 거래일까지다. 리포트 당일/미래 자료는 사용하지 않으며, 최대 90일 이내의 최신 유효 보고서를 참고한다. 리포트가 없는 종목은 중립 처리하되 결측을 숨기지 않는다. 유효 리포트 부족 시 REPORT를 반영하는 계산은 오류가 날 수 있다.
 - 기본 결합식은 `0.5*(0.5*mom + 0.5*pair) + 0.5*report`, REPORT 반영 전 비교 기준은 `0.5*mom + 0.5*pair`이다. 결합식은 수익률을 직접 평균하거나 종목의 투자 비중을 직접 지정하는 식이 아니라 **순위 신호 값**을 생성한다.
@@ -86,10 +86,10 @@
 
 ## 6. 결정적 검증·Evals 제출 증거
 
-- 골든 케이스: `tests/harness/golden_cases.yaml`, 실행: `tests/test_verification_golden.py`. 정상·경계·금지 입력과 AC 식별자를 포함한다.
+- 골든 케이스: [`tests/harness/golden_cases.yaml`](../tests/harness/golden_cases.yaml) 26건(설명 12 + 수식 14), 하니스는 [`test_verification_golden.py`](../tests/test_verification_golden.py)와 [`test_formula_golden.py`](../tests/test_formula_golden.py)이다. 정상·경계·금지 입력에 AC를 연결한다.
 - 오답 주입: `tests/test_evals_runner_mutation.py` 및 골든 하니스의 결함 주입 테스트. 정답을 바꾸지 않고 실패 검출 여부 확인.
-- Evals 설계: `evals/EVAL_DESIGN.md`, `evals/evalset.jsonl`(36건), `evals/run_evals.py`, 실제 출력 `evals/results/*.json` 및 `history.csv`.
-- 수식 제안 회귀: `src/diffusion/test_kr_formula.py`, `test_kr_formula_agent.py`. 가짜 LLM 응답으로 안전성·수정 요청·규칙 기반 대체 동작을 자동 검사하며 실서비스 모델 품질 측정과 구분한다.
+- Evals: [설계](../evals/EVAL_DESIGN.md), 설명 [36건](../evals/evalset.jsonl)·[러너](../evals/run_evals.py), 수식 [24건](../evals/formula_evalset.jsonl)·[러너](../evals/run_formula_evals.py), [결과 JSON·이력](../evals/results/).
+- 수식 제안 회귀: `src/diffusion/test_kr_formula.py`, `src/diffusion/test_kr_formula_agent.py`. 가짜 LLM 응답으로 안전성·수정 요청·규칙 기반 대체 동작을 자동 검사하며 실서비스 모델 품질 측정과 구분한다.
 - 자동 재현: `.github/workflows/evals-ci.yml` GitHub Actions. 실제 CI 성공 여부는 해당 실행의 로그와 커밋 기준으로 기록한다.
 - E2E 사용자 동선: `README.md`와 `docs/FINAL_SUBMISSION.md`. 로컬 Claude 로그인, 시세·체크포인트·수집 상태가 달라질 수 있으므로 GUI 완료 및 품질을 자동 테스트 통과만으로 단정하지 않는다.
 
@@ -114,4 +114,4 @@
 
 ## 9. 제출 상태
 
-**최종 MVP 기능 범위는 `2~4에 기재된 현재 구현으로 확정한다.** 2026-11-17 기준 자동 골든·단위·모의 Evals의 재현 증거를 갖추고, 실제 사용자 환경/실제 LLM 성능 측정은 각각 수행 여부로 구분해 기재한다. 최신 CI 커밋·로그·결과 파일은 `docs/FINAL_SUBMISSION.md`에서 확인한다. 평가 중 설명을 위해 실행되지 않은 기능이나 시험을 추가로 약속하지 않는다.
+**최종 MVP 기능 범위는 §2~4에 기재된 현재 구현으로 확정한다.** 2026-11-17 기준 자동 골든·단위·모의 Evals의 재현 증거를 갖추고, 실제 사용자 환경/실제 LLM 성능 측정은 각각 수행 여부로 구분해 기재한다. CI와 결과 파일은 [최종 제출 안내](FINAL_SUBMISSION.md)에서 확인한다. 평가 중 설명을 위해 실행되지 않은 기능이나 시험을 추가로 약속하지 않는다.

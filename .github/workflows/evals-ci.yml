@@ -27,8 +27,7 @@ on:
       - 'tests/test_formula_golden.py'
       - 'tests/test_evals_runner_mutation.py'
 
-# Running tests must not create commits on the evaluated branch.
-# CI results are downloadable artifacts; previously submitted baseline JSON/CSV stays in Git.
+# CI archives results for every run; only current-source runs may publish JSON/CSV to main.
 permissions:
   contents: write
 
@@ -71,8 +70,7 @@ jobs:
       - name: Offline Evals (not LLM accuracy)
         run: python evals/run_evals.py --change "automated offline verification regression" --golden "12 verifier + 14 formula golden cases"
 
-      # Upload the results of this exact run without writing back to main.
-      # This avoids non-fast-forward errors when multiple commits arrive close together.
+      # Archive the outputs of this exact evaluated revision.
       - name: Archive execution results
         if: always()
         uses: actions/upload-artifact@v4
