@@ -2,7 +2,7 @@
 
 ## 위임 범위
 - 변경 가능: `tests/test_verification_golden.py`, `evals/verification_adapter.py`의 테스트 어댑터 부분.
-- 읽기 전용: `SPEC.md` AC-06a/07d/07g, `AGENTS.md`, `tests/harness/golden_cases.yaml`, `src/diffusion/kr_report_verification.py`.
+- 읽기 전용: `docs/SPEC.md` AC-06a/07d/07g, `AGENTS.md`, `tests/harness/golden_cases.yaml`, `src/diffusion/kr_report_verification.py`.
 - 구현 의도: YAML에서 12개 케이스를 읽고 정상·경계·금지 규칙을 호출하여 기대 status/오류를 검사한다. `skip`·`xfail`·조건부 무시 금지. 정답 파일은 구현과 분리하고 실측에 맞춰 조용히 수정하지 않는다.
 - 완료 기준: 12개 골든 케이스 전수 실행, 하니스 유효성 검증, 결함 주입 시 해당 오류 검출, 복원 후 전수 통과.
 
