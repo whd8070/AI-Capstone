@@ -3,11 +3,17 @@ on:
   workflow_dispatch:
   push:
     paths:
+      - 'src/diffusion/kr_report_verification.py'
+      - 'SPEC.md'
+      - '.github/workflows/evals-ci.yml'
+      - 'evals/EVAL_DESIGN.md'
+      - 'evals/requirements-evals.txt'
       - 'evals/evalset.jsonl'
       - 'evals/run_evals.py'
       - 'evals/verification_adapter.py'
       - 'tests/harness/golden_cases.yaml'
       - 'tests/test_verification_golden.py'
+      - 'tests/test_evals_runner_mutation.py'
 permissions:
   contents: write
 jobs:
