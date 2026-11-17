@@ -1,6 +1,6 @@
 # 최종 제출 안내 — 개미구조대 (2026-11-17)
 
-> **심사 기준 파일:** [README.md](../README.md) · [SPEC.md](../SPEC.md) · [AGENTS.md](../AGENTS.md) · [EVAL_DESIGN.md](../evals/EVAL_DESIGN.md)
+> **심사 기준 파일:** [README.md](../README.md) · [SPEC.md](SPEC.md) · [AGENTS.md](../AGENTS.md) · [EVAL_DESIGN.md](../evals/EVAL_DESIGN.md)
 >
 > 기능 범위는 **현재 구현된 로컬 웹 MVP**로 확정했다. 단위/골든/오프라인 Evals **자동 실행 사실**과 **실제 Claude/Codex의 품질**, **로컬 UI E2E 체험**은 반드시 구분한다.
 
@@ -34,7 +34,7 @@
 
 | 경로 | 용도 |
 |---|---|
-| `SPEC.md` | 최종 MVP 제품·AC·시나리오 정본 |
+| `docs/SPEC.md` | 최종 MVP 제품·AC·시나리오 정본 |
 | `README.md` | 설치·실사용 시나리오·입력/출력 |
 | `AGENTS.md` | 각 AI 에이전트/결정적 코드 책임과 금지 행동 |
 | `docs/PROBLEM.md` | 문제·대상 사용자·관찰 근거·검증 가설 |
@@ -79,9 +79,7 @@ Pop-Location
 
 사용자 데모 실패·실제 CLI 미로그인·Evals 실측 미실시 사실은 명확히 기록한다. **최종 기능 범위 확정은 모든 환경의 실행 성공이나 모델 투자 성과 인증이 아니다.**
 
-## F. 최종 골든·사람 검토 추가 근거
+## F. 최종 골든 검증 근거
 
 - `tests/harness/golden_cases.yaml`: 설명 검증 12건 + 성향 수식 제안 14건. 수식 하니스는 `tests/test_formula_golden.py`다.
 - `docs/prompts/delegation_formula_golden.md`: AC-12a/b/c·AC-10c 하니스 위임 범위, 검사 회피 결함 주입 및 해석.
-- `docs/reviews/EVAL_APPROVAL.md`: 사람 담당자의 기준 검토·서명란. **아직 검토·승인 완료로 표시하지 않는다.**
-- `docs/reviews/WEB_E2E_CHECKLIST.md`: 사용자 브라우저 흐름 기록. **실제로 수행한 후에만 완료 표시한다.**
