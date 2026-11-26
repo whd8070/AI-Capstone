@@ -602,11 +602,13 @@ with formula_tab:
                                           index=list(labels).index(DEFAULT_PROFILE[q['key']]),
                                           key='formula_q_' + q['key'])
         fnote = st.text_input('추가로 바라는 점 (선택, 에이전트만 참고)', max_chars=300, key='formula_note')
-        has_claude = fagent.claude_executable() is not None
-        if st.button('에이전트에게 제안받기', type='primary', disabled=not has_claude, key='formula_agent_run'):
-            with trace.Trace('formula_proposal', {'profile': fprofile, 'note': trace.text(fnote)}, model=fagent.MODEL, prompt_version=trace.version('kr_formula_prompt.md')) as tr:
-                with st.spinner('에이전트가 수식을 제안하고 검사하는 중입니다 (10~40초)'):
-                    st.session_state['kr_formula_result'] = fagent.propose(fprofile, fnote)
+        available_formula_agents = connected_agents()
+        formula_backend = st.selectbox('수식 제안 에이전트', available_formula_agents, format_func=display_agent,
+                                       key='formula_backend') if available_formula_agents else None
+        if st.button('에이전트에게 제안받기', type='primary', disabled=formula_backend is None, key='formula_agent_run'):
+            with trace.Trace('formula_proposal', {'profile': fprofile, 'note': trace.text(fnote), 'backend': formula_backend}, model=fagent.MODEL if formula_backend == 'claude' else 'codex', prompt_version=trace.version('kr_formula_prompt.md')) as tr:
+                with st.spinner('에이전트가 수식을 제안하고 검사하는 중입니다'):
+                    st.session_state['kr_formula_result'] = fagent.propose(fprofile, fnote, backend=formula_backend)
                 observed = trace.proposal(st.session_state['kr_formula_result'])
                 tr.step('attempts', observed['attempts'])
                 tr.step('diagnosis', observed['diag'])
@@ -617,14 +619,14 @@ with formula_tab:
                 observed = trace.proposal(st.session_state['kr_formula_result'])
                 tr.step('diagnosis', observed['diag'])
                 tr.finish('completed_with_issues' if observed['issues'] else 'completed', observed)
-        if not has_claude:
-            st.caption('Claude Code CLI가 없어 에이전트 버튼을 껐습니다. 규칙 기반은 쓸 수 있습니다.')
+        if not available_formula_agents:
+            st.caption('로그인 확인된 Codex 또는 Claude CLI가 없습니다. 리포트 수집 탭에서 연결 상태를 확인하세요. 규칙 기반은 계속 사용할 수 있습니다.')
     with fr:
         fres = st.session_state.get('kr_formula_result')
         if not fres:
             st.info('왼쪽에서 성향을 고르고 버튼을 누르세요.')
         else:
-            st.markdown('**제안된 수식 · ' + ('에이전트 제안' if fres['source'] == 'agent' else '규칙 기반(LLM 없음)') + '**')
+            st.markdown('**제안된 수식 · ' + (f"에이전트 제안 ({fres.get('backend', 'claude')})" if fres['source'] == 'agent' else '규칙 기반(LLM 없음)') + '**')
             st.code(fres['formula'], language='text')
             st.write(fres['explanation'])
             if fres.get('stop_reason'):
