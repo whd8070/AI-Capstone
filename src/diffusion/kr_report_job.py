@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 
 import kr_report_engine as engine
+import kr_trace as trace
 
 
 def update_status(folder, **fields):
@@ -38,11 +39,13 @@ def main():
     project=Path(data['project']).resolve()
     if folder.parent.resolve() != (project/'results'/'kr_report_dashboard'/'jobs').resolve():
         raise ValueError('Unrecognized job folder')
-    update_status(folder,status='running',step='initializing',progress=0,total=None)
+    tr = trace.Trace.resume(data['_trace']) if data.get('_trace') else trace.Trace('backtest', {'start': data.get('start'), 'end': data.get('end'), 'formula': trace.formula(data.get('formula'))}, model='stable')
     try:
+        update_status(folder,status='running',step='initializing',progress=0,total=None)
         warned = False
         def progress(i,n,d):
             nonlocal warned
+            tr.step('backtest_signal', {'index': i, 'total': n, 'date': str(d.date())})
             try:
                 update_status(folder,status='running',step=f'신호 {i}/{n}: {d.date()}',progress=i,total=n)
             except OSError as exc:
@@ -58,7 +61,9 @@ def main():
         result=engine.backtest(project,**opts,progress=progress)
         update_status(folder,status='done',step='완료',progress=result['metrics_after']['decisions'],
                       total=result['metrics_after']['decisions'],result_path=str(result['path']))
+        tr.finish('completed', trace.metrics(result))
     except Exception as exc:
+        tr.finish('error', error=exc)
         update_status(folder,status='failed',step='실패',error=f'{type(exc).__name__}: {exc}',
                       traceback=traceback.format_exc()[-10000:])
         raise

@@ -30,3 +30,7 @@ src/diffusion/results/kr_report_dashboard/
 # Local human-labelled live Evals and non-public reviewer responses
 evals/local/
 evals/local_results/
+
+# Local LLMOps traces: explicitly publish only reviewed, anonymized records.
+/logs/trace.jsonl
+/logs/trace.lock

@@ -8,6 +8,12 @@ on:
       - '.github/workflows/evals-ci.yml'
       - 'docs/SPEC.md'
       - 'src/diffusion/kr_report_verification.py'
+      - 'src/diffusion/kr_trace.py'
+      - 'src/diffusion/kr_report_web.py'
+      - 'src/diffusion/kr_report_jobs.py'
+      - 'src/diffusion/kr_report_job.py'
+      - 'src/diffusion/kr_report_engine.py'
+      - 'src/diffusion/test_kr_trace.py'
       - 'src/diffusion/kr_formula.py'
       - 'src/diffusion/kr_formula_agent.py'
       - 'src/diffusion/kr_formula_survey.py'
@@ -56,6 +62,12 @@ jobs:
           test -f docs/SPEC.md
           test ! -f SPEC.md
           python -c "import yaml; data=yaml.safe_load(open('docs/ontology.yaml',encoding='utf-8')); assert isinstance(data,dict) and 'project_log' in data"
+
+      - name: Trace serialization and privacy regression tests
+        working-directory: src/diffusion
+        run: |
+          python -m py_compile kr_trace.py kr_report_web.py kr_report_jobs.py kr_report_job.py kr_report_engine.py
+          python -m unittest -v test_kr_trace
 
       - name: Formula safety and agent-loop regression tests
         working-directory: src/diffusion

@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import kr_report_jobs as jobs
+import kr_trace as trace
 
 import pandas as pd
 import streamlit as st
@@ -27,8 +28,10 @@ with st.sidebar:
     if custom_formula:
         st.caption('성향 조사 탭에서 확정한 수식입니다.')
         if st.button('기본 수식으로 되돌리기', key='formula_clear'):
-            st.session_state.pop('kr_formula', None)
-            st.session_state.pop('kr_report_portfolio', None)
+            with trace.Trace('formula_reset', {'previous_formula': trace.formula(custom_formula)}) as tr:
+                st.session_state.pop('kr_formula', None)
+                st.session_state.pop('kr_report_portfolio', None)
+                tr.finish('completed', {'formula': trace.formula(DEFAULT_FORMULA), 'portfolio': trace.prior_portfolio(st.session_state)})
             st.rerun()
     else:
         st.caption("기본 수식입니다. '결합 수식 제안' 탭에서 성향에 맞는 수식으로 바꿀 수 있습니다.")
@@ -44,6 +47,7 @@ with st.sidebar:
     fee = st.number_input('편도 수수료 (bp)', min_value=0.0, max_value=500.0, value=20.0, step=1.0)
     fetch = st.checkbox('원격 시세 자동 다운로드/갱신', value=True)
     st.caption('상태 저장: diffusion/results/kr_report_dashboard/ (Git 추적 대상 아님)')
+    st.caption('요청 추적: logs/trace.jsonl · 평가용 텍스트 수집은 합성 입력 전용 설정입니다.')
 
 try:
     consensus = eng.load_consensus(PROJECT)
@@ -90,19 +94,25 @@ with bt:
     st.caption('시작 신호일 종가로 첫 신호 → 다음 거래일 시가에 첫 슬리브 체결. '
                '지정 기간에 리포트 보유 종목이 2개 미만이면 REPORT 순위화가 불가능해 중단합니다.')
     if st.button('백테스트 실행 (별도 프로세스)', type='primary', key='bt_run'):
-        try:
-            jobdir, launched = jobs.submit(PROJECT,dict(
-                start=str(start),end=str(end),pair_share=pair,report_share=report,
-                K=int(k),seed=int(seed),batch=128,threads=int(threads),sleeves=20,
-                fee_bps_side=fee,fetch=fetch,max_signals=5 if smoke else None,
-                formula=formula))
-            st.session_state['kr_report_job'] = str(jobdir)
-            if launched:
-                st.success(f'새 백테스트 시작: {jobdir}')
-            else:
-                st.info('같은 설정의 백테스트가 이미 실행 중입니다.')
-        except Exception as exc:
-            st.exception(exc)
+        with trace.Trace('backtest', {'start': str(start), 'end': str(end), 'formula': trace.formula(formula), 'K': int(k), 'seed': int(seed), 'threads': int(threads), 'fee_bps_side': fee, 'fetch': fetch, 'max_signals': 5 if smoke else None}, model='stable') as tr:
+            try:
+                jobdir, launched = jobs.submit(PROJECT,dict(
+                    start=str(start),end=str(end),pair_share=pair,report_share=report,
+                    K=int(k),seed=int(seed),batch=128,threads=int(threads),sleeves=20,
+                    fee_bps_side=fee,fetch=fetch,max_signals=5 if smoke else None,
+                    formula=formula), trace_envelope=tr.record)
+                if launched:
+                    tr.defer()
+                else:
+                    tr.finish('duplicate', {'launched': False})
+                st.session_state['kr_report_job'] = str(jobdir)
+                if launched:
+                    st.success(f'새 백테스트 시작: {jobdir}')
+                else:
+                    st.info('같은 설정의 백테스트가 이미 실행 중입니다.')
+            except Exception as exc:
+                tr.finish('error', error=exc)
+                st.exception(exc)
 
     all_jobs = sorted([p for p in jobs.jobs_root(PROJECT).iterdir() if p.is_dir()],
                       key=lambda p:p.stat().st_mtime,reverse=True)
@@ -194,36 +204,42 @@ with portfolio:
     st.caption('이 페이지의 날짜는 신호 생성일이 아니라 매수일입니다. '
                '시세 캘린더에서 전 거래일을 찾아 해당 종가까지만 순위를 계산합니다.')
     if st.button('포트폴리오 생성 (수치 먼저 표시)', type='primary', key='portfolio_run'):
-        with st.status('포트폴리오 계산 시작', expanded=True) as status:
-            stage = st.empty()
-            try:
-                st.session_state['kr_report_portfolio'] = eng.portfolio_for_buy_date(
-                    PROJECT, buy_date, pair_share=pair, report_share=report,
-                    K=int(k), seed=int(seed), threads=int(threads), fetch=fetch,
-                    agent='local', progress=lambda message: stage.info(message), formula=formula)
-                status.update(label='수치 포트폴리오 준비 완료', state='complete',
-                              expanded=False)
-            except Exception as exc:
-                status.update(label='포트폴리오 계산 오류', state='error')
-                st.exception(exc)
+        with trace.Trace('portfolio_generate', {'buy_date': str(buy_date), 'formula': trace.formula(formula), 'K': int(k), 'seed': int(seed), 'threads': int(threads), 'fetch': fetch, 'previous_portfolio': trace.prior_portfolio(st.session_state)}, model='stable') as tr:
+            with st.status('포트폴리오 계산 시작', expanded=True) as status:
+                stage = st.empty()
+                try:
+                    st.session_state['kr_report_portfolio'] = eng.portfolio_for_buy_date(
+                        PROJECT, buy_date, pair_share=pair, report_share=report,
+                        K=int(k), seed=int(seed), threads=int(threads), fetch=fetch,
+                        agent='local', progress=lambda message: (tr.step('portfolio_progress', trace.text(message)), stage.info(message))[-1], formula=formula)
+                    tr.finish('completed', trace.portfolio(st.session_state['kr_report_portfolio']))
+                    status.update(label='수치 포트폴리오 준비 완료', state='complete',
+                                  expanded=False)
+                except Exception as exc:
+                    tr.finish('error', {'remaining_portfolio': trace.prior_portfolio(st.session_state)}, error=exc)
+                    status.update(label='포트폴리오 계산 오류', state='error')
+                    st.exception(exc)
     current_portfolio = st.session_state.get('kr_report_portfolio')
     if current_portfolio is not None and explanation_agent != 'local':
         if st.button('AI 설명 생성·독립 검증 (모델 추론 재실행 없음)',
                      key='portfolio_ai_explain'):
-            with st.status('선택한 에이전트로 설명 및 검증', expanded=True) as status:
-                progress_line = st.empty()
-                try:
-                    updated = eng.regenerate_portfolio_explanation(
-                        current_portfolio, explanation_agent,
-                        progress=lambda message: progress_line.info(message))
-                    st.session_state['kr_report_portfolio'] = updated
-                    if updated.get('agent_used') == explanation_agent:
-                        status.update(label='AI 설명·검증 완료', state='complete')
-                    else:
-                        status.update(label='AI 검증 불합격 · 로컬 설명으로 대체', state='error')
-                except Exception as exc:
-                    status.update(label='AI 설명 처리 실패 · 이전 결과 유지', state='error')
-                    st.exception(exc)
+            with trace.Trace('portfolio_ai_explain', {'portfolio': trace.portfolio(current_portfolio), 'backend': explanation_agent}, model=explanation_agent, prompt_version={'explanation': trace.version('kr_report_engine.py'), 'verification': trace.version('kr_report_verification.py')}) as tr:
+                with st.status('선택한 에이전트로 설명 및 검증', expanded=True) as status:
+                    progress_line = st.empty()
+                    try:
+                        updated = eng.regenerate_portfolio_explanation(
+                            current_portfolio, explanation_agent,
+                            progress=lambda message: (tr.step('explanation_progress', trace.text(message)), progress_line.info(message))[-1])
+                        st.session_state['kr_report_portfolio'] = updated
+                        tr.finish('completed' if updated.get('agent_used') == explanation_agent else 'fallback', trace.portfolio(updated), error=None if updated.get('agent_used') == explanation_agent else 'AI_EXPLANATION_FALLBACK')
+                        if updated.get('agent_used') == explanation_agent:
+                            status.update(label='AI 설명·검증 완료', state='complete')
+                        else:
+                            status.update(label='AI 검증 불합격 · 로컬 설명으로 대체', state='error')
+                    except Exception as exc:
+                        tr.finish('error', {'remaining_portfolio': trace.prior_portfolio(st.session_state)}, error=exc)
+                        status.update(label='AI 설명 처리 실패 · 이전 결과 유지', state='error')
+                        st.exception(exc)
     if 'kr_report_portfolio' in st.session_state:
         r=st.session_state['kr_report_portfolio']
         st.success(f'신호일 {r["decision_date"]} 종가 → 매수일 {r["buy_date"]} 시가 · 유효 리포트 {r["report_coverage"]}개 종목')
@@ -460,47 +476,52 @@ with refresh_tab:
     else:
         st.success('수집 실행 조건 충족 · 선택한 단계 실행 가능')
     if st.button('선택한 단계 실행', type='primary', key='refresh_run'):
-        if run_blockers:
-            st.error('아래 조건이 충족되지 않아 실행하지 않았습니다. '
-                     '설정을 수정하고 다시 눌러 주세요.')
-            for reason in run_blockers:
-                st.markdown('- ' + reason)
-            st.stop()
-        with st.status('신규 리포트 처리 중', expanded=True) as status_box:
-            event_log = st.empty()
-            latest_lines = []
-            def progress(stage, message):
-                latest_lines.append(f'[{stage}] {message}')
-                event_log.code('\n'.join(latest_lines[-18:]), language='text')
-            try:
-                msg = eng.refresh_collection_to(
-                    PROJECT, until, limit=int(limit), max_cost=float(cost),
-                    max_tokens=int(max_tokens), download_only=not extract,
-                    progress=progress, backend=backend if extract else 'codex')
-                if extract and auto_portfolio:
-                    progress('포트폴리오', '시점별 데이터 갱신 · PAIR 추론 · REPORT 결합')
-                    new_result = eng.portfolio_for_buy_date(
-                        PROJECT, buy_for_refresh, pair_share=pair, report_share=report,
-                        K=int(k), seed=int(seed), threads=int(threads), fetch=fetch,
-                        agent='local', formula=formula)
-                    st.session_state['kr_report_portfolio'] = new_result
-                    if explain_on_refresh != 'local':
-                        progress('설명 에이전트', '수치 계산 완료 · 설명과 독립 검증 호출 중')
-                        new_result = eng.regenerate_portfolio_explanation(
-                            new_result, explain_on_refresh,
-                            progress=lambda msg: progress('검증', msg))
+        with trace.Trace('report_refresh', {'until': str(until), 'limit': int(limit), 'max_cost': float(cost), 'max_tokens': int(max_tokens), 'extract': extract, 'auto_portfolio': auto_portfolio, 'buy_date': str(buy_for_refresh), 'formula': trace.formula(formula), 'confirmed': confirm}, model=backend if extract else 'none', prompt_version={'collection': trace.version('kr_report_collection.py')}) as tr:
+            if run_blockers:
+                tr.finish('rejected', {'blockers': [trace.text(x) for x in run_blockers]}, error='PRECONDITION_FAILED')
+                st.error('아래 조건이 충족되지 않아 실행하지 않았습니다. '
+                         '설정을 수정하고 다시 눌러 주세요.')
+                for reason in run_blockers:
+                    st.markdown('- ' + reason)
+                st.stop()
+            with st.status('신규 리포트 처리 중', expanded=True) as status_box:
+                event_log = st.empty()
+                latest_lines = []
+                def progress(stage, message):
+                    tr.step('collection_progress', {'stage': stage, 'message': trace.text(message)})
+                    latest_lines.append(f'[{stage}] {message}')
+                    event_log.code('\n'.join(latest_lines[-18:]), language='text')
+                try:
+                    msg = eng.refresh_collection_to(
+                        PROJECT, until, limit=int(limit), max_cost=float(cost),
+                        max_tokens=int(max_tokens), download_only=not extract,
+                        progress=progress, backend=backend if extract else 'codex')
+                    if extract and auto_portfolio:
+                        progress('포트폴리오', '시점별 데이터 갱신 · PAIR 추론 · REPORT 결합')
+                        new_result = eng.portfolio_for_buy_date(
+                            PROJECT, buy_for_refresh, pair_share=pair, report_share=report,
+                            K=int(k), seed=int(seed), threads=int(threads), fetch=fetch,
+                            agent='local', formula=formula)
                         st.session_state['kr_report_portfolio'] = new_result
-                    st.session_state['refresh_portfolio_buy'] = str(new_result['buy_date'])
-                    msg += f" · 포트폴리오 생성 완료: {new_result['path']}"
-                status_box.update(label='리포트 처리 완료', state='complete', expanded=False)
-                st.session_state['collection_notice'] = msg
-                get_llm_status.clear()
-                st.rerun()
-            except Exception as exc:
-                status_box.update(label='수집·구조화·포트폴리오 단계 오류', state='error', expanded=True)
-                st.error(str(exc))
-                st.caption('이미 받은 PDF와 추출 결과는 로컬에 남습니다. 완료 건은 재실행 시 건너뛰며 '
-                           '검증되지 않은 부분 수집 결과는 컨센서스로 반영하지 않습니다.')
+                        if explain_on_refresh != 'local':
+                            progress('설명 에이전트', '수치 계산 완료 · 설명과 독립 검증 호출 중')
+                            new_result = eng.regenerate_portfolio_explanation(
+                                new_result, explain_on_refresh,
+                                progress=lambda msg: progress('검증', msg))
+                            st.session_state['kr_report_portfolio'] = new_result
+                        st.session_state['refresh_portfolio_buy'] = str(new_result['buy_date'])
+                        msg += f" · 포트폴리오 생성 완료: {new_result['path']}"
+                    status_box.update(label='리포트 처리 완료', state='complete', expanded=False)
+                    st.session_state['collection_notice'] = msg
+                    get_llm_status.clear()
+                    tr.finish('completed', {'message': trace.text(msg), 'portfolio': trace.portfolio(new_result) if extract and auto_portfolio else None})
+                    st.rerun()
+                except Exception as exc:
+                    tr.finish('error', {'remaining_portfolio': trace.prior_portfolio(st.session_state)}, error=exc)
+                    status_box.update(label='수집·구조화·포트폴리오 단계 오류', state='error', expanded=True)
+                    st.error(str(exc))
+                    st.caption('이미 받은 PDF와 추출 결과는 로컬에 남습니다. 완료 건은 재실행 시 건너뛰며 '
+                               '검증되지 않은 부분 수집 결과는 컨센서스로 반영하지 않습니다.')
 
     # A successful one-click refresh also shows the result in this tab.
     latest_buy = st.session_state.get('refresh_portfolio_buy')
@@ -576,10 +597,19 @@ with formula_tab:
         fnote = st.text_input('추가로 바라는 점 (선택, 에이전트만 참고)', max_chars=300, key='formula_note')
         has_claude = fagent.claude_executable() is not None
         if st.button('에이전트에게 제안받기', type='primary', disabled=not has_claude, key='formula_agent_run'):
-            with st.spinner('에이전트가 수식을 제안하고 검사하는 중입니다 (10~40초)'):
-                st.session_state['kr_formula_result'] = fagent.propose(fprofile, fnote)
+            with trace.Trace('formula_proposal', {'profile': fprofile, 'note': trace.text(fnote)}, model=fagent.MODEL, prompt_version=trace.version('kr_formula_prompt.md')) as tr:
+                with st.spinner('에이전트가 수식을 제안하고 검사하는 중입니다 (10~40초)'):
+                    st.session_state['kr_formula_result'] = fagent.propose(fprofile, fnote)
+                observed = trace.proposal(st.session_state['kr_formula_result'])
+                tr.step('attempts', observed['attempts'])
+                tr.step('diagnosis', observed['diag'])
+                tr.finish('fallback' if observed['source'] == 'rule' else 'completed_with_issues' if observed['issues'] else 'completed', observed, error='LLM_FALLBACK' if observed['source'] == 'rule' else None)
         if st.button('규칙으로만 만들기 (LLM 없음)', key='formula_rule_run'):
-            st.session_state['kr_formula_result'] = fagent.rule_based(fprofile)
+            with trace.Trace('formula_rule', {'profile': fprofile}, model='none') as tr:
+                st.session_state['kr_formula_result'] = fagent.rule_based(fprofile)
+                observed = trace.proposal(st.session_state['kr_formula_result'])
+                tr.step('diagnosis', observed['diag'])
+                tr.finish('completed_with_issues' if observed['issues'] else 'completed', observed)
         if not has_claude:
             st.caption('Claude Code CLI가 없어 에이전트 버튼을 껐습니다. 규칙 기반은 쓸 수 있습니다.')
     with fr:
@@ -616,20 +646,28 @@ with formula_tab:
     fcustom = st.text_input('적용할 수식 (직접 고칠 수 있음)', value=fstart, max_chars=300, key='formula_custom_' + fstart)
     fc1, fc2 = st.columns(2)
     if fc1.button('검사만 하기', key='formula_check'):
-        try:
-            checked = fdiag.diagnose(fcustom)
-        except kr_formula.FormulaError as err:
-            st.error(f'거부됨: {err}')
-        else:
-            st.success('검사 통과')
-            show_formula_diag(checked, fdiag.diagnose(fdiag.DEFAULT_FORMULA))
+        with trace.Trace('formula_check', {'formula': trace.formula(fcustom)}) as tr:
+            try:
+                checked = fdiag.diagnose(fcustom)
+            except kr_formula.FormulaError as err:
+                tr.finish('rejected', {'accepted': False}, error=err)
+                st.error(f'거부됨: {err}')
+            else:
+                tr.step('diagnosis', trace.diagnostic(checked))
+                tr.finish('completed', {'accepted': True, 'diag': trace.diagnostic(checked)})
+                st.success('검사 통과')
+                show_formula_diag(checked, fdiag.diagnose(fdiag.DEFAULT_FORMULA))
     if fc2.button('이 수식을 백테스트·포트폴리오에 적용', type='primary', key='formula_apply'):
-        try:
-            fdiag.diagnose(fcustom)          # 검사기를 통과한 수식만 세션에 저장한다
-        except kr_formula.FormulaError as err:
-            st.error(f'거부됨: {err}')
-        else:
-            st.session_state['kr_formula'] = fcustom.strip()
-            st.session_state.pop('kr_report_portfolio', None)   # 이전 수식으로 만든 화면 결과는 지운다
-            st.rerun()
+        with trace.Trace('formula_apply', {'formula': trace.formula(fcustom), 'previous_formula': trace.formula(formula), 'previous_portfolio': trace.prior_portfolio(st.session_state)}) as tr:
+            try:
+                checked = fdiag.diagnose(fcustom)          # 검사기를 통과한 수식만 세션에 저장한다
+            except kr_formula.FormulaError as err:
+                tr.finish('rejected', {'applied': False}, error=err)
+                st.error(f'거부됨: {err}')
+            else:
+                st.session_state['kr_formula'] = fcustom.strip()
+                st.session_state.pop('kr_report_portfolio', None)   # 이전 수식으로 만든 화면 결과는 지운다
+                tr.step('diagnosis', trace.diagnostic(checked))
+                tr.finish('completed', {'applied': True, 'formula': trace.formula(fcustom.strip()), 'remaining_portfolio': trace.prior_portfolio(st.session_state)})
+                st.rerun()
     st.info(f'현재 적용 중인 수식: `{formula}`' + ('' if custom_formula else ' (기본 수식)'))

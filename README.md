@@ -2,7 +2,7 @@
 
 > 아주대학교 AI 캡스톤디자인 1팀 · 2026-11-17 MVP 제출 · 문의: whd8070@ajou.ac.kr
 
-**교수 평가 일정:** 2026-11-18(수) 반영 기한, **2026-11-19(목) 평가**(당일 기본 브랜치 기준). [최종 SPEC](docs/SPEC.md) · [Evals 설계](evals/EVAL_DESIGN.md) · [실행 결과](evals/results/) · [최종 제출 안내](docs/FINAL_SUBMISSION.md)
+**교수 평가 일정:** MVP 평가 2026-11-19(목), **최종평가 2026-12-09(수)** (당일 기본 브랜치 기준). [최종 SPEC](docs/SPEC.md) · [Evals 설계](evals/EVAL_DESIGN.md) · [실행 결과](evals/results/) · [최종 제출 안내](docs/FINAL_SUBMISSION.md)
 
 ## 1. 서비스와 최종 MVP
 
@@ -67,6 +67,25 @@ bash ./run_mac.sh
 ```
 
 **주의:** `run_windows.cmd`/`run_mac.sh`는 Git 업데이트를 자동으로 수행하지 않습니다. pull 충돌 시 로컬 변경사항을 보존하고 해결하세요(`git reset --hard` 사용 금지). 의존성 재설정이 필요할 때만 Windows `start_windows.cmd` 또는 macOS `bash ./start_mac.sh`를 사용합니다. macOS 설치 스크립트는 제공하지만 전체 백테스트의 실기기 검증은 별도 확인이 필요합니다.
+
+### 최종평가: 로컬 요청 추적 (LLMOps)
+
+수식 제안(에이전트/규칙), 검사·적용·복원, 포트폴리오 계산, AI 설명·검증, 리포트 처리, 백테스트 실행 요청을 저장소 루트의 `logs/trace.jsonl`에 한 요청당 한 JSON 레코드로 누적합니다. 백테스트는 워커가 완료/실패 때 기록합니다. 강제 종료된 프로세스에는 완료 기록이 남지 않을 수 있습니다. 로그는 제품의 계산 및 판정을 변경하지 않습니다.
+
+기본 모드는 자유 텍스트(추가 메모·설명·오류 메시지 등)를 생략합니다. **실제 개인정보·인증 정보를 입력하지 않는 팀원 평가 시연에만** 다음 설정으로 텍스트 기록을 활성화하십시오. 패턴 마스킹은 이름 등 모든 개인정보의 자동 제거를 보장하지 않습니다.
+
+Windows PowerShell (실행 중 웹을 먼저 종료):
+
+```powershell
+cd "$HOME\AI-Capstone" # 실제 복제 위치로 변경
+git pull --ff-only origin main
+$env:AI_CAPSTONE_TRACE_TEXT = '1'
+.\run_windows.cmd
+```
+
+macOS: `AI_CAPSTONE_TRACE_TEXT=1 bash ./run_mac.sh`. 시연 후 PowerShell에서 `Remove-Item Env:AI_CAPSTONE_TRACE_TEXT`로 설정을 해제합니다.
+
+시연 후 PowerShell에서 `Get-Content .\logs\trace.jsonl -Tail 5 -Encoding UTF8`로 최근 기록을 확인할 수 있습니다. 로그는 기본적으로 Git에서 제외합니다. 공개 저장소 제출 시 팀원이 직접 개인정보·비밀·로컬 경로·권한 없는 원문을 확인하고 정제한 실제 기록만 명시적으로 `git add -f logs/trace.jsonl` 하십시오. 임의의 로그·측정값은 생성하지 않습니다. CLI 기본 모델의 실제 고정 버전을 확인할 수 없는 경우 설정 식별자만 남깁니다. 모델 고정 및 공격 Evals·기준점·개선 회차는 별도 수행합니다.
 
 ## 3. 평가자용 대표 시연 (④ → ② → ①)
 

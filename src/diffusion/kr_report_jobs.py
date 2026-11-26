@@ -75,7 +75,7 @@ def active_jobs(project):
                 continue
 
 
-def submit(project, request):
+def submit(project, request, *, trace_envelope=None):
     project=Path(project).resolve()
     request={'mode':'backtest','project':str(project),**request,
              'K':engine.FIXED_K,'seed':engine.FIXED_SEED}
@@ -97,7 +97,8 @@ def submit(project, request):
             raise RuntimeError(f'다른 백테스트가 실행 중입니다: {existing}. '
                                '공유 시나리오/피처 캐시 충돌을 피하려면 완료 후 실행하세요.')
         folder.mkdir(parents=True,exist_ok=True)
-        engine.write_json(folder/'request.json',request)
+        # Trace metadata does not affect job signature or deduplication.
+        engine.write_json(folder/'request.json', {**request, '_trace': trace_envelope} if trace_envelope else request)
         # Re-running the same job ID must not read completed events from its old run.
         (folder/'status_updates.jsonl').write_bytes(b'')
         (folder/'spawn.pid').write_text('',encoding='ascii')

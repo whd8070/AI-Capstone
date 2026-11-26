@@ -717,6 +717,7 @@ def display_portfolio_rows(comparison, *, held_only=True):
 def build_portfolio_explanation(result, compact, agent, *, progress=None):
     """Produce validated text only. Never repeat inference or change allocations."""
     from kr_report_verification import verify, local_status
+    import kr_trace as trace
     explanation = local_explanation(result, compact)
     warning = None
     agent_used = 'local'
@@ -734,7 +735,9 @@ def build_portfolio_explanation(result, compact, agent, *, progress=None):
                     result, compact, agent, feedback=last_error or '')
                 if progress:
                     progress(f'독립 검증 에이전트 호출 {attempt+1}/3')
+                trace.observe('explanation_draft', {'attempt': attempt + 1, 'draft': trace.text(draft), 'backend': agent})
                 checked = verify(draft, analysis_facts, backend=agent)
+                trace.observe('explanation_verification', {'attempt': attempt + 1, 'verification': trace.verification(checked)})
                 if checked['status'] == 'PASS':
                     explanation = draft
                     verification = checked
@@ -743,6 +746,7 @@ def build_portfolio_explanation(result, compact, agent, *, progress=None):
                     break
                 last_error = '; '.join(checked['errors'][:4]) or '검증 실패'
             except Exception as exc:
+                trace.observe('explanation_error', {'type': type(exc).__name__, 'message': trace.text(exc)})
                 last_error = str(exc)
                 break
         if agent_used == 'local':
