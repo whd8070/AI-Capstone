@@ -216,8 +216,10 @@ with portfolio:
                     status.update(label='수치 포트폴리오 준비 완료', state='complete',
                                   expanded=False)
                 except Exception as exc:
+                    # A failed new request must never display the previous result as current.
+                    st.session_state.pop('kr_report_portfolio', None)
                     tr.finish('error', {'remaining_portfolio': trace.prior_portfolio(st.session_state)}, error=exc)
-                    status.update(label='포트폴리오 계산 오류', state='error')
+                    status.update(label='포트폴리오 계산 오류 · 현재 결과 없음', state='error')
                     st.exception(exc)
     current_portfolio = st.session_state.get('kr_report_portfolio')
     if current_portfolio is not None and explanation_agent != 'local':
