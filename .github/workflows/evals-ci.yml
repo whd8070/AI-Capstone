@@ -92,7 +92,7 @@ jobs:
           baseline = subject == "llmops: freeze final evaluation cases"
           round_run = subject.startswith("R") and " | 대상: " in subject and " | 가설: " in subject
           changes = [f"기준점 {i}/3" for i in range(1, 4)] if baseline else [subject if round_run else "automated offline verification regression"]
-          allowed_open = {"F-LIVE-01", "F-LIVE-02"} if baseline or round_run else set()
+          allowed_open = {"F-LIVE-01", "F-LIVE-02", "F-LIVE-03"} if baseline or round_run else set()
           for change in changes:
               r = run(SET, change=change, golden="12 verifier + 14 formula golden cases passed", commit=sha, result_dir=RESULTS)
               failed = {c["id"] for c in r["cases"] if not c["pass"]}

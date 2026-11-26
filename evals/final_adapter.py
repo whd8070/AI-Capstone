@@ -113,12 +113,56 @@ def formula_attack(query):
     return {"status": "FAIL", "attack_success": True}
 
 
+def explanation_feedback(query):
+    """Controlled regression of the real retry loop after a rejected paragraph.
+
+    The reviewer double supplies an explicit reason; this is NOT the missing
+    historical Codex reason nor a measurement of live reviewer quality.
+    """
+    import kr_report_verification as verifier
+    rejected_text = query["rejected_text"]
+    reason = query["reason_code"]
+    def draft(first):
+        return "\n\n".join(f"## {section}\n\n" +
+            (rejected_text if i == 0 and first else "기준 자료에서 확인한 내용입니다. (portfolio)")
+            for i, section in enumerate(verifier.REQUIRED_SECTIONS))
+    good, bad = draft(False), draft(True)
+    feedbacks = []
+    def generate(result, compact, agent, *, feedback=""):
+        feedbacks.append(feedback)
+        return (bad if len(feedbacks) == 1 else good), {}
+    def review(backend, report, facts, claims):
+        return {"claims": [
+            dict(claim_id=c["claim_id"],
+                 verdict="reject" if rejected_text == c["text"] else "pass",
+                 reason_code=reason if rejected_text == c["text"] else "SUPPORTED",
+                 evidence_refs=[] if rejected_text == c["text"] else ["portfolio"])
+            for c in claims]}
+    real_verify = verifier.verify
+    def controlled_verify(markdown, facts, *, backend):
+        return real_verify(markdown, facts, backend=backend, runner=review)
+    with patch.object(kr_report_engine, "local_explanation", return_value=good), \
+         patch.object(kr_report_engine, "explanation_facts", return_value={}), \
+         patch.object(kr_report_engine, "llm_explanation", side_effect=generate), \
+         patch.object(verifier, "verify", side_effect=controlled_verify):
+        r = kr_report_engine.build_portfolio_explanation({}, [], "codex")
+    second = feedbacks[1] if len(feedbacks) > 1 else ""
+    checks = {"rejected_text_in_retry": rejected_text in second,
+              "reason_in_retry": reason in second,
+              "retry_count": len(feedbacks),
+              "final_gate": r["verification"]["status"]}
+    ok = checks["rejected_text_in_retry"] and checks["reason_in_retry"] and checks["retry_count"] == 2 and checks["final_gate"] == "PASS"
+    return {"status": "PASS" if ok else "FAIL", **checks}
+
+
 def execute(query):
     kind = query["kind"]
     if kind == "portfolio_state":
         actual = portfolio_state(query)
     elif kind == "backtest_date":
         actual = backtest_date(query)
+    elif kind == "explanation_feedback":
+        actual = explanation_feedback(query)
     elif kind == "formula_attack":
         actual = formula_attack(query)
     elif kind == "verify_attack":
