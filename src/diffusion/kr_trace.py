@@ -172,8 +172,20 @@ def proposal(r):
 def verification(v):
     if not isinstance(v, dict):
         return None
+    claims = []
+    for item in v.get("claims", [])[:250]:
+        if not isinstance(item, dict):
+            continue
+        cid = str(item.get("claim_id", ""))
+        verdict = item.get("verdict")
+        refs = item.get("evidence_refs", [])
+        claims.append(dict(
+            claim_id=cid if re.fullmatch(r"C[0-9]{1,5}", cid) else "[INVALID ID]",
+            verdict=verdict if verdict in ("pass", "warn", "reject") else "unknown",
+            reason_code=text(item.get("reason_code")),
+            evidence_refs=[r if isinstance(r, str) and re.fullmatch(r"(settings|portfolio|risk|scenario|rank:[0-9]{6}|report:[0-9]+)", r) else "[OMITTED]" for r in refs[:8]] if isinstance(refs, list) else []))
     return dict(status=v.get("status"), backend=model_id(v.get("backend")), claim_count=v.get("claim_count"),
-        errors=[text(e) for e in v.get("errors", [])], content_sha256=v.get("content_sha256"))
+        errors=[text(e) for e in v.get("errors", [])], content_sha256=v.get("content_sha256"), claims=claims)
 
 def portfolio(r):
     if not isinstance(r, dict):
