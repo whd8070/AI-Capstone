@@ -85,7 +85,7 @@ $env:AI_CAPSTONE_TRACE_TEXT = '1'
 
 macOS: `AI_CAPSTONE_TRACE_TEXT=1 bash ./run_mac.sh`. 시연 후 PowerShell에서 `Remove-Item Env:AI_CAPSTONE_TRACE_TEXT`로 설정을 해제합니다.
 
-시연 후 PowerShell에서 `Get-Content .\logs\trace.jsonl -Tail 5 -Encoding UTF8`로 최근 기록을 확인할 수 있습니다. 로그는 기본적으로 Git에서 제외합니다. 공개 저장소 제출 시 팀원이 직접 개인정보·비밀·로컬 경로·권한 없는 원문을 확인하고 정제한 실제 기록만 명시적으로 `git add -f logs/trace.jsonl` 하십시오. 임의의 로그·측정값은 생성하지 않습니다. CLI 기본 모델의 실제 고정 버전을 확인할 수 없는 경우 설정 식별자만 남깁니다. 모델 고정 및 공격 Evals·기준점·개선 회차는 별도 수행합니다.
+시연 후 PowerShell에서 `Get-Content .\logs\trace.jsonl -Tail 5 -Encoding UTF8`로 최근 기록을 확인할 수 있습니다. **공개 저장소의 `logs/trace.jsonl`은 검토한 실제 요청의 축약본입니다.** 기존 로컬 로그는 pull 전에 프로젝트 밖으로 백업하십시오. 추적 중 추가된 로컬 원문은 이미 추적된 파일에도 누적될 수 있으므로 `git add -A`로 무검토 커밋하지 마십시오. 개인정보·비밀·로컬 경로·권한 없는 원문을 검토하고 정제한 실제 기록만 제출합니다. CLI 기본 모델의 실제 고정 버전을 확인할 수 없는 경우 설정 식별자만 남깁니다. [실사용 증거 및 개선 회차](docs/reviews/FINAL_LLMOPS_EVIDENCE.md) · [위협 모델](docs/ARCHITECTURE.md) · [기준점 및 실행 이력](evals/results/history.csv).
 
 ## 3. 평가자용 대표 시연 (④ → ② → ①)
 
@@ -115,8 +115,8 @@ macOS: `AI_CAPSTONE_TRACE_TEXT=1 bash ./run_mac.sh`. 시연 후 PowerShell에서
 | **MVP 구현·실행** | [SPEC](docs/SPEC.md), 본 README, [웹 구현](src/diffusion/kr_report_web.py) | 최종 범위·AC, 설치·실행, 입력과 기대 결과 |
 | **결정적 검증** | [골든 YAML](tests/harness/golden_cases.yaml), [설명 하니스](tests/test_verification_golden.py), [수식 하니스](tests/test_formula_golden.py) | 설명 12건 + 수식 제안 14건 |
 | **결함 주입** | [설명 기록](docs/prompts/delegation_verification_golden.md), [수식 기록](docs/prompts/delegation_formula_golden.md), [러너 변이 테스트](tests/test_evals_runner_mutation.py) | 의도적 오류의 검출·복원 |
-| **Evals 설계·데이터** | [설계서](evals/EVAL_DESIGN.md), [설명 36건](evals/evalset.jsonl), [수식 24건](evals/formula_evalset.jsonl) | AC별 지표·계산 방법·합격선·범주 |
-| **Evals 실행 결과** | [설명 러너](evals/run_evals.py), [수식 러너](evals/run_formula_evals.py), [결과 JSON·이력 CSV](evals/results/) | 케이스별 실제 출력·판정 및 실행 이력 |
+| **Evals 설계·데이터** | [설계서](evals/EVAL_DESIGN.md), [통합 회귀·공격 46건](evals/evalset.jsonl), [수식 24건](evals/formula_evalset.jsonl) | AC별 지표·계산 방법·합격선·범주 |
+| **Evals 실행 결과** | [통합 러너](evals/run_evals.py), [수식 러너](evals/run_formula_evals.py), [결과 JSON·이력 CSV](evals/results/) | 케이스별 실제 출력·판정 및 실행 이력 |
 | **에이전트 역할·근거** | [AGENTS](AGENTS.md), [문제 정의](docs/PROBLEM.md), [온톨로지](docs/ontology.yaml) | 책임·경계·근거 추적 |
 
 **검증된 기준 실행:** [GitHub Actions #44023933245](https://github.com/whd8070/AI-Capstone/actions/runs/44023933245)에서 평가 소스 `9f194165`, 결과 저장 커밋 `edce0d3`. pytest **32/32**, 수식 제안 Evals **24/24**, 설명 검증 Evals **36/36** 통과. [설명 이력](evals/results/history.csv)·[수식 이력](evals/results/formula_history.csv)에 실행 결과가 저장되어 있습니다. 이후 실행은 결과 JSON의 소스 커밋과 이력으로 추적합니다.
