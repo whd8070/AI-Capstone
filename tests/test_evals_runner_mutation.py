@@ -19,4 +19,6 @@ def test_false_pass_injected_into_failed_case_is_caught():
 def test_evalset_validates_minimum_and_category_coverage():
     cases = read_cases(ROOT / "evals" / "evalset.jsonl")
     assert len(cases) >= 20
-    assert {c["category"] for c in cases} == {"normal", "boundary", "failure", "prohibited"}
+    assert {c["category"] for c in cases} == {"normal", "boundary", "failure", "prohibited", "attack"}
+    assert sum(c["category"] == "attack" for c in cases) >= 5
+    assert any(c["category"] == "failure" and "request_id=" in c["note"] for c in cases)

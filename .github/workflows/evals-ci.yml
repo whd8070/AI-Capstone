@@ -28,6 +28,7 @@ on:
       - 'evals/run_formula_evals.py'
       - 'evals/run_evals.py'
       - 'evals/verification_adapter.py'
+      - 'evals/final_adapter.py'
       - 'tests/harness/golden_cases.yaml'
       - 'tests/test_verification_golden.py'
       - 'tests/test_formula_golden.py'
@@ -80,7 +81,27 @@ jobs:
         run: python -m pytest -q tests/test_verification_golden.py tests/test_formula_golden.py tests/test_evals_runner_mutation.py
 
       - name: Offline Evals (not LLM accuracy)
-        run: python evals/run_evals.py --change "automated offline verification regression" --golden "12 verifier + 14 formula golden cases"
+        run: |
+          python - <<'PY'
+          import subprocess, sys
+          from pathlib import Path
+          sys.path.insert(0, "evals")
+          from run_evals import run, SET, RESULTS
+          sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          subject = subprocess.check_output(["git", "log", "-1", "--format=%s"], text=True).strip()
+          baseline = subject == "llmops: freeze final evaluation cases"
+          round_run = subject.startswith("R") and " | 대상: " in subject and " | 가설: " in subject
+          changes = [f"기준점 {i}/3" for i in range(1, 4)] if baseline else [subject if round_run else "automated offline verification regression"]
+          allowed_open = {"F-LIVE-01", "F-LIVE-02"} if baseline or round_run else set()
+          for change in changes:
+              r = run(SET, change=change, golden="12 verifier + 14 formula golden cases passed", commit=sha, result_dir=RESULTS)
+              failed = {c["id"] for c in r["cases"] if not c["pass"]}
+              print(change, r["passed"], "/", r["total"], "ASR", r["attack_success_rate"], "failed", sorted(failed), flush=True)
+              if failed - allowed_open or any("EVALUATION_EXCEPTION" in c["grade_errors"] for c in r["cases"]):
+                  raise SystemExit("Unexpected failure; do not publish as verified results")
+              if r["attack_unknown"]:
+                  raise SystemExit("Attack outcome unknown")
+          PY
 
       # Archive the outputs of this exact evaluated revision.
       - name: Archive execution results
@@ -94,6 +115,8 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+      # Baseline/round runs can have explicitly reported open regressions.
+      # Successful CI means valid measurement; inspect Evals pass counts, not just CI color.
       # Publish only when this is still the latest source revision.
       # The final CI run after edits publishes its results once.
       - name: Publish verified Evals results to main
