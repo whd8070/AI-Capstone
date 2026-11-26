@@ -155,6 +155,59 @@ def explanation_feedback(query):
     return {"status": "PASS" if ok else "FAIL", **checks}
 
 
+def explanation_preservation(query):
+    """Scripted retry must preserve previously accepted paragraphs."""
+    import kr_report_verification as verifier
+    original = "기존에 검증된 문단입니다. (portfolio)"
+    bad = "잘못된 추월 방향입니다. (portfolio)"
+    fixed = "확인된 방향만 설명합니다. (portfolio)"
+    changed = "새로 바뀐 정상 문단입니다. (portfolio)"
+    def draft(first, other):
+        return "\n\n".join(f"## {section}\n\n" +
+            (first if i == 0 else other if i == 1 else original)
+            for i, section in enumerate(verifier.REQUIRED_SECTIONS))
+    before, revised = draft(bad, original), draft(fixed, changed)
+    expected = draft(fixed, original)
+    calls = []
+    def generate(result, compact, agent, *, feedback=""):
+        calls.append(feedback)
+        return (before if len(calls) == 1 else revised), {}
+    def review(backend, report, facts, claims):
+        return {"claims": [dict(claim_id=c["claim_id"],
+            verdict="reject" if c["text"] == bad else "pass",
+            reason_code="WRONG_DIRECTION" if c["text"] == bad else "SUPPORTED",
+            evidence_refs=[] if c["text"] == bad else ["portfolio"]) for c in claims]}
+    real_verify = verifier.verify
+    def controlled_verify(markdown, facts, *, backend):
+        return real_verify(markdown, facts, backend=backend, runner=review)
+    with patch.object(kr_report_engine, "local_explanation", return_value=expected), \
+         patch.object(kr_report_engine, "explanation_facts", return_value={}), \
+         patch.object(kr_report_engine, "llm_explanation", side_effect=generate), \
+         patch.object(verifier, "verify", side_effect=controlled_verify):
+        result = kr_report_engine.build_portfolio_explanation({}, [], "codex")
+    ok = result["explanation"] == expected and result["agent_used"] == "codex" and len(calls) == 2
+    return {"status": "PASS" if ok else "FAIL",
+            "preserved_accepted": changed not in result["explanation"],
+            "final_gate": result["verification"]["status"], "calls": len(calls)}
+
+
+def formula_backend(query):
+    """Exercise selected backend dispatch with a controlled structured CLI answer."""
+    calls = []
+    def scripted(prompt):
+        calls.append(prompt)
+        return {"formula": "0.5*(0.5*mom + 0.5*pair) + 0.5*report",
+                "explanation": "합성 정상 응답"}, {"tokens": 1, "cost_usd": None}
+    # The older version lacks the Codex backend entry point.
+    if not hasattr(kr_formula_agent, "call_codex"):
+        return {"status": "FAIL", "codex_calls": 0, "reason": "CODEX_UNSUPPORTED"}
+    with patch.object(kr_formula_agent, "call_codex", side_effect=scripted), \
+         patch.object(kr_formula_agent, "call_claude", side_effect=AssertionError("wrong backend")):
+        result = kr_formula_agent.propose(query["profile"], backend="codex")
+    ok = bool(calls) and result["source"] == "agent"
+    return {"status": "PASS" if ok else "FAIL", "codex_calls": len(calls), "source": result["source"]}
+
+
 def execute(query):
     kind = query["kind"]
     if kind == "portfolio_state":
@@ -163,6 +216,10 @@ def execute(query):
         actual = backtest_date(query)
     elif kind == "explanation_feedback":
         actual = explanation_feedback(query)
+    elif kind == "explanation_preservation":
+        actual = explanation_preservation(query)
+    elif kind == "formula_backend":
+        actual = formula_backend(query)
     elif kind == "formula_attack":
         actual = formula_attack(query)
     elif kind == "verify_attack":
