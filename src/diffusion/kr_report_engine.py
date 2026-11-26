@@ -340,6 +340,14 @@ def backtest(project, start, end, *, pair_share=.5, report_share=.5,
         raise ValueError('Start must precede end')
     if end.date() > kr.now_kst().date():
         raise ValueError('No future backtest dates')
+    # A period is inclusive, unlike a single-date portfolio request. Only known
+    # weekends are adjusted here. The resulting weekday must still have exact
+    # observed prices; a missing weekday is NOT assumed to be a holiday.
+    requested_end = end
+    if end.weekday() >= 5:
+        end -= pd.Timedelta(days=end.weekday() - 4)
+    if start >= end:
+        raise ValueError('At least two KRX sessions required after weekend normalization')
     if end.date() == kr.now_kst().date() and kr.now_kst().time() < kr.CLOSE_READY:
         raise ValueError('Today not yet post-close ready')
     market = kr.load_market(project, end, fetch=fetch, force=force, need_open_start=start)
@@ -388,6 +396,7 @@ def backtest(project, start, end, *, pair_share=.5, report_share=.5,
                  fee_bps_side=fee_bps_side, K=K, seed=seed,
                  first_signal_date=str(decisions[0].date()),
                  last_mark_date=str(price_days[-1].date()),
+                 requested_end_date=str(requested_end.date()), effective_end_date=str(end.date()),
                  fill_basis='next_KRX_session_OPEN',
                  pair_share=float(pair_share), report_share=float(report_share), formula=formula)
     dest = output_dir(project, 'backtest', str(start.date()), str(end.date()), pair_share, report_share, K, seed, formula)

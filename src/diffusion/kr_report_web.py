@@ -156,6 +156,11 @@ with bt:
                 nav0=pd.read_csv(path/'nav_before.csv',index_col=0,parse_dates=True)['nav']
                 nav1=pd.read_csv(path/'nav_after.csv',index_col=0,parse_dates=True)['nav']
                 st.success(f'계산 완료 · {path}')
+                requested_end=m1.get('requested_end_date')
+                effective_end=m1.get('effective_end_date')
+                if requested_end and effective_end and requested_end != effective_end:
+                    st.info(f'주말 종료일 {requested_end} → 직전 평일 {effective_end}로 조정 (실제 관측 세션 검증 완료)')
+                st.caption(f"실제 평가 범위: {m1.get('first_signal_date','-')} ~ {m1.get('last_mark_date','-')}")
                 nav=pd.concat([nav0.rename('MOM+PAIR'),nav1.rename('MOM+PAIR+REPORT')],axis=1)
                 st.line_chart(nav,use_container_width=True)
                 fields=[('누적 수익률','total_return'),('연환산 수익률','annualized_return'),
